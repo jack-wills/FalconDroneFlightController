@@ -1,0 +1,1 @@
+openocd -d0 -f board/st_nucleo_f4.cfg -c "program build/hello_world.hex" -c "reset run" -c "shutdown"
