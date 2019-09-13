@@ -10,7 +10,7 @@ The Falcon drone is a project aimed to design an autonomous flight controller fr
 * connect the NUCLEO board
 * `$ make install`
 
-#ToDo
+# ToDo
 
 Change logger and I2c to interrupt based
 Create class for MPU sensors
