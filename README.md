@@ -9,3 +9,14 @@ The Falcon drone is a project aimed to design an autonomous flight controller fr
 * clone this repository
 * connect the NUCLEO board
 * `$ make install`
+
+#ToDo
+
+Change logger and I2c to interrupt based
+Create class for MPU sensors
+Setup FreeRTOS
+Read Magnetometer
+Calibrate magnetometer 
+Use MPU data to calculate heading
+BMP180 class
+Serial interface from Pi
