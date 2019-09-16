@@ -6,8 +6,7 @@
 #include <stdio.h>
 
 #include "logger.h"
-#include "i2cdevice.h"
-#include "mpu9250.h"
+#include "imu.h"
 
 /*----------------------------------------------------------------------------
  * SystemCoreClockConfigure: configure SystemCoreClock using HSI
@@ -76,101 +75,17 @@ int main(void) {
     
     Logger LOG = Logger("main");
     LOG.info("Falcon start up!");
-
-    I2CDevice i2cDevice = I2CDevice();
-
-    MPU9250 mpu = MPU9250(0x69, i2cDevice);
-
-    uint8_t accelFullScale = MPU9250_ACCEL_FS_8;
-    mpu.setFullScaleAccelRange(accelFullScale);
-    float aRes = ((float)(accelFullScale+1))/16384.0f;
-
-    uint8_t gyroFullScale = MPU9250_GYRO_FS_500;
-    mpu.setFullScaleGyroRange(gyroFullScale);
-    float gRes = ((float)(gyroFullScale+1))/131.0f;
-
-    int16_t aXRaw,aYRaw,aZRaw,gXRaw,gYRaw,gZRaw,mXRaw,mYRaw,mZRaw;
-
-    int64_t gXOffset = 0, gYOffset = 0, gZOffset = 0;
-    float aXOffset = 0.82f, aYOffset = 0.05f, aZOffset = -0.21;
-
-    float aX,aY,aZ,gX,gY,gZ;
-    float pitch,roll,yaw;
-    float aPitch,aRoll;
-
-    //Calc starting heading from just acceleration values;
-    mpu.getAcceleration(&aXRaw, &aYRaw, &aZRaw);
-    aX = (float)aXRaw*aRes;
-    aY = (float)aYRaw*aRes;   
-    aZ = (float)aZRaw*aRes; 
-    pitch = atan2((float)aY, (float)aZ) * 57.296f;
-    roll = atan2((float)aX, (float)aZ) * -57.296f;
-    yaw = 0;
-
-    LOG.info("Starting calibrations...");
-    for(int i = 0; i < 500; i++){
-        mpu.getRotation(&gXRaw,&gYRaw,&gZRaw);
-        gXOffset += gXRaw;
-        gYOffset += gYRaw;
-        gZOffset += gZRaw;
-        HAL_Delay(3);
-    }
-
-    LOG.info("Calibrations Finished");
-    gXOffset /= 500;
-    gYOffset /= 500;
-    gZOffset /= 500;
-
-    uint64_t tLast = HAL_GetTick();
-    int count = 0;
+    
+    IMU imu = IMU(0x69);
 	
+    uint64_t tLast = HAL_GetTick();
     while(1) {
-        mpu.getMotion9(&aXRaw,&aYRaw,&aZRaw,&gXRaw,&gYRaw,&gZRaw,&mXRaw,&mYRaw,&mZRaw);
 
-        aX = (float)(aXRaw*aRes)-aXOffset;
-        aY = (float)(aYRaw*aRes)-aYOffset;   
-        aZ = (float)(aZRaw*aRes)-aZOffset; 
-
-        aPitch = atan2((float)aY, (float)aZ) * 57.296f;
-        aRoll = atan2((float)aX, (float)aZ) * -57.296f;
-
-        gX = (float)(gXRaw-gXOffset)*gRes;
-        gY = (float)(gYRaw-gYOffset)*gRes;  
-        gZ = (float)(gZRaw-gZOffset)*gRes; 
-        if (count != 0) {
-            pitch += gX * 0.005;
-            roll += gY * 0.005;
-            yaw += gZ * 0.005;
-        } else {
-            // Print cycle
-            pitch += gX * 0.05;
-            roll += gY * 0.05;
-            yaw += gZ * 0.05;
-        }
-
-        pitch += roll * sin(gZ * 0.01745f * 0.05);
-        roll -= pitch * sin(gZ * 0.01745f * 0.05);
-
-        pitch = pitch * 0.95f + aPitch * 0.05f;
-        roll = roll * 0.95f + aRoll * 0.05f;
         
-        while(HAL_GetTick() - tLast < 5);
+        imu.update();
+        imu.printAngles();
+        while(HAL_GetTick() - tLast < 50);
         tLast = HAL_GetTick();
-
-        if (count++ < 3) {
-            while(HAL_GetTick() - tLast < 5);
-            tLast = HAL_GetTick();
-        } else {
-            // Print cycle
-            count = 0;
-
-            std::stringstream ss;
-            ss << "Angle: " << LOG.ftoa(roll, 2) << " ,\t " << LOG.ftoa(pitch, 2) << " ,\t " << LOG.ftoa(yaw, 2);
-            LOG.info(ss.str());
-            
-            while(HAL_GetTick() - tLast < 50);
-            tLast = HAL_GetTick();
-        }
     }
 }
 

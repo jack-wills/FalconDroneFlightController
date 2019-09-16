@@ -42,9 +42,11 @@ THE SOFTWARE.
  */
 void MPU9250::initialize() {
     setClockSource(MPU9250_CLOCK_PLL_XGYRO);
-    setFullScaleGyroRange(MPU9250_GYRO_FS_250);
-    setFullScaleAccelRange(MPU9250_ACCEL_FS_2);
-    setSleepEnabled(false); // thanks to Jack Elston for pointing this one out!
+    setSleepEnabled(false);
+	i2cDevice.writeByte(devAddr, MPU9250_RA_INT_PIN_CFG, 0x02); //set i2c bypass enable pin to true to access magnetometer
+	HAL_Delay(10);
+	i2cDevice.writeByte(AK8963_I2C_ADDR, 0x0A, 0x01); //enable the magnetometer
+	HAL_Delay(10);
 }
 
 /** Verify the I2C connection.
@@ -1701,10 +1703,6 @@ void MPU9250::getMotion9(int16_t* ax, int16_t* ay, int16_t* az, int16_t* gx, int
 	getMotion6(ax, ay, az, gx, gy, gz);
 	
 	//read mag
-	i2cDevice.writeByte(devAddr, MPU9250_RA_INT_PIN_CFG, 0x02); //set i2c bypass enable pin to true to access magnetometer
-	HAL_Delay(10);
-	i2cDevice.writeByte(AK8963_I2C_ADDR, 0x0A, 0x01); //enable the magnetometer
-	HAL_Delay(10);
 	i2cDevice.readReg(AK8963_I2C_ADDR, AK8963_XOUT_L, 6, buffer);
 	*mx = (((int16_t)buffer[1]) << 8) | buffer[0];
     *my = (((int16_t)buffer[3]) << 8) | buffer[2];

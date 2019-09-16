@@ -91,6 +91,7 @@ clean:
 .PHONY: install
 install: $(BIN_NAME).hex
 	@echo;
+	cmd.exe /c upload.bat;
 	
 
 ###########################################
