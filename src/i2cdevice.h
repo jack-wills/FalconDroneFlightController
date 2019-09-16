@@ -12,6 +12,7 @@ class I2CDevice
 public:
 	I2CDevice();
 	~I2CDevice();
+	I2CDevice(const I2CDevice& i2cDevice);
 	bool write(uint8_t addr, uint8_t* data, int dataSize);
 	bool write(uint8_t addr, uint8_t data);
 	bool writeReg(uint8_t addr, uint8_t reg, uint8_t* data, int dataSize);

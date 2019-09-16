@@ -16,38 +16,67 @@ public:
         }
         this->className = nameTemp;
     }
-    void info(std::string msg) {
-        print(msg, "INFO ");
+
+    Logger& info() {
+        logLevel = "INFO ";
+        return *this;
     }
-    void warn(std::string msg) {
-        print(msg, "WARN ");
+
+    Logger& warn() {
+        logLevel = "WARN ";
+        return *this;
     }
-    void error(std::string msg) {
-        print(msg, "ERROR");
+
+    Logger& error() {
+        logLevel = "ERROR";
+        return *this;
     }
-    void info(std::string msg, int num) {
+
+    Logger& operator<<(const char* const & value)
+    {
+        if (strcmp(value, "\n") != 0) {
+            logStream << value;
+        } else {
+            print(logStream.str());
+            logStream = std::stringstream();
+        }
+        return *this;
+    }
+    Logger& operator<<(float const & value)
+    {
+        logStream << ftoa(value, 2);
+        return *this;
+    }
+    Logger& operator<<(double const & value)
+    {
+        logStream << ftoa(value, 2);
+        return *this;
+    }
+
+    template <typename T>
+    Logger& operator<<(T const & value)
+    {
+        logStream << value;
+        return *this;
+    }
+
+    const char* flush = "\n"; 
+private:
+    PCSerial pcSerial; 
+    std::string className;
+    std::string logLevel;
+    std::stringstream logStream;
+	void print(std::string msg) {
         std::stringstream ss;
-        ss << msg << num;
-        print(ss.str(), "INFO ");
-    }
-    void warn(std::string msg, int num) {
-        std::stringstream ss;
-        ss << msg << num;
-        print(ss.str(), "WARN ");
-    }
-    void error(std::string msg, int num) {
-        std::stringstream ss;
-        ss << msg << num;
-        print(ss.str(), "ERROR");
-    }
-    void info(std::string msg, uint8_t num) {
-        info(msg, (int) num);
-    }
-    void warn(std::string msg, uint8_t num) {
-        warn(msg, (int) num);
-    }
-    void error(std::string msg, uint8_t num) {
-        error(msg, (int) num);
+        int time = HAL_GetTick();
+        int milli = time%1000;
+        int sec = (time%60000)/1000;
+        int min = time/60000;
+        ss << "(" << std::setw(3) << std::setfill('0') << min 
+           << ":" << std::setw(2) << std::setfill('0') << sec 
+           << "." << std::setw(3) << std::setfill('0') << milli 
+           << ") " << className << logLevel << ": " << msg;
+        pcSerial.println(ss.str());
     }
     // Converts a floating point number to string. 
     std::string ftoa(float n, int afterpoint) { 
@@ -84,21 +113,6 @@ public:
         }
         return std::string(res);
     } 
-private:
-    PCSerial pcSerial; 
-    std::string className;
-	void print(std::string msg, std::string level) {
-        std::stringstream ss;
-        int time = HAL_GetTick();
-        int milli = time%1000;
-        int sec = (time%60000)/1000;
-        int min = time/60000;
-        ss << "(" << std::setw(3) << std::setfill('0') << min 
-           << ":" << std::setw(2) << std::setfill('0') << sec 
-           << "." << std::setw(3) << std::setfill('0') << milli 
-           << ") " << className << level << ": " << msg;
-        pcSerial.println(ss.str());
-    }
     int intToStr(int x, char str[], int d) { 
         int i = 0; 
         while (x) { 

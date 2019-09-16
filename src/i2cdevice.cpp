@@ -25,6 +25,11 @@ I2CDevice::~I2CDevice() {
 
 }
 
+I2CDevice::I2CDevice(const I2CDevice& i2cDevice) {
+    GPIO_InitStruct = i2cDevice.GPIO_InitStruct;
+    I2CHandle = i2cDevice.I2CHandle;
+}
+
 void I2CDevice::I2C_ClearBusyFlagErratum() {
     uint16_t            sdaPin = GPIO_PIN_9;
     GPIO_TypeDef*       sdaPort = GPIOB;
@@ -120,7 +125,7 @@ void I2CDevice::I2C_ClearBusyFlagErratum() {
     I2CHandle.Instance->CR1 |= 0x0001;
 
     if (HAL_I2C_Init(&I2CHandle) != HAL_OK) {
-        LOG.error("I2C Failed to Initialise");
+        LOG.error() << "I2C Failed to Initialise" << LOG.flush;
     }
 }
 
@@ -130,17 +135,17 @@ bool I2CDevice::write(uint8_t addr, uint8_t* data, int dataSize) {
         return true;
     } else {
         if(result == HAL_ERROR) {
-            LOG.error("I2C request failed due to HAL_ERROR");
+            LOG.error() << "I2C request failed due to HAL_ERROR" << LOG.flush;
         }
         if(result == HAL_BUSY) {
-            LOG.error("I2C request failed due to HAL_BUSY");
+            LOG.error() << "I2C request failed due to HAL_BUSY" << LOG.flush;
             /*I2C_ClearBusyFlagErratum();
             while(HAL_I2C_Master_Transmit(&I2CHandle, addr<<1, data, dataSize, 10000) != HAL_OK) {
                 HAL_Delay(100);
             }*/
         }
         if(result == HAL_TIMEOUT) {
-            LOG.error("I2C request failed due to HAL_TIMEOUT");
+            LOG.error() << "I2C request failed due to HAL_TIMEOUT" << LOG.flush;
         }
         return false;
     }
@@ -204,13 +209,13 @@ bool I2CDevice::read(uint8_t addr, uint8_t* rXData, int dataSize) {
         return true;
     } else {
         if(result == HAL_ERROR) {
-            LOG.error("I2C request failed due to HAL_ERROR");
+            LOG.error() << "I2C request failed due to HAL_ERROR" << LOG.flush;
         }
         if(result == HAL_BUSY) {
-            LOG.error("I2C request failed due to HAL_BUSY");
+            LOG.error() << "I2C request failed due to HAL_BUSY" << LOG.flush;
         }
         if(result == HAL_TIMEOUT) {
-            LOG.error("I2C request failed due to HAL_TIMEOUT");
+            LOG.error() << "I2C request failed due to HAL_TIMEOUT" << LOG.flush;
         }
         return false;
     }
@@ -266,5 +271,5 @@ void I2CDevice::scan() {
             ss << "0x" << std::hex << i << ", ";
         }
  	}
-    LOG.info(ss.str()); // Received an ACK at that address
+    LOG.info() << ss.str() << LOG.flush; // Received an ACK at that address
 }

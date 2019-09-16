@@ -2629,7 +2629,7 @@ void MPU9250::setStandbyZGyroEnabled(bool enabled) {
  */
 uint16_t MPU9250::getFIFOCount() {
     i2cDevice.readReg(devAddr, MPU9250_RA_FIFO_COUNTH, 2, buffer);
-    //LOG.info("fifo count: ", (((uint16_t)buffer[0]) << 8) | buffer[1]);
+    //LOG.info() << "fifo count: ", (((uint16_t)buffer[0]) << 8) | buffer[1]);
     return (((uint16_t)buffer[0]) << 8) | buffer[1];
 }
 
@@ -2982,7 +2982,7 @@ bool MPU9250::writeMemoryBlock(const uint8_t *data, uint16_t dataSize, uint8_t b
         }
 
         if (!i2cDevice.writeReg(devAddr, MPU9250_RA_MEM_R_W, chunkSize, progBuffer)) {
-            LOG.error("I2C request failed");
+            LOG.error() << "I2C request failed" << LOG.flush;
         }
 
         // verify data if needed
@@ -2994,11 +2994,11 @@ bool MPU9250::writeMemoryBlock(const uint8_t *data, uint16_t dataSize, uint8_t b
                 uint8_t* data_ = (uint8_t*)malloc(sizeof(uint8_t) * (chunkSize + 2));
                 data_[0] = MPU9250_RA_MEM_R_W;
                 memmove(data_+1, progBuffer, chunkSize);
-                LOG.info("data 0 = ",data_[0]);
-                LOG.info("data 1 = ",data_[1]);
-                LOG.info("data 2 = ",data_[2]);
-                LOG.info("data 3 = ",data_[3]);
-                LOG.info("data 4 = ",data_[4]);
+                LOG.info() << "data 0 = " << data_[0] << LOG.flush;
+                LOG.info() << "data 1 = " << data_[1] << LOG.flush;
+                LOG.info() << "data 2 = " << data_[2] << LOG.flush;
+                LOG.info() << "data 3 = " << data_[3] << LOG.flush;
+                LOG.info() << "data 4 = " << data_[4] << LOG.flush;
                 std::stringstream ss;
                 ss << "Block write verification error, bank " << (int)bank << ", address " << (int)address << "!\nExpected:";
                 for (j = 0; j < chunkSize; j++) {
@@ -3008,7 +3008,7 @@ bool MPU9250::writeMemoryBlock(const uint8_t *data, uint16_t dataSize, uint8_t b
                 for (uint8_t j = 0; j < chunkSize; j++) {
                     ss << " 0x" << std::hex << (int)verifyBuffer[i + j];
                 }
-                LOG.error(ss.str());
+                LOG.error() << ss.str() << LOG.flush;
                 free(verifyBuffer);
                 if (useProgMem) free(progBuffer);
                 return false; // uh oh.
@@ -3059,12 +3059,6 @@ bool MPU9250::writeDMPConfigurationSet(const uint8_t *data, uint16_t dataSize, b
         // write data or perform special action
         if (length > 0) {
             // regular block of data to write
-            /*Serial.print("Writing config block to bank ");
-            Serial.print(bank);
-            Serial.print(", offset ");
-            Serial.print(offset);
-            Serial.print(", length=");
-            Serial.println(length);*/
             if (useProgMem) {
                 if (sizeof(progBuffer) < length) progBuffer = (uint8_t *)realloc(progBuffer, length);
                 for (j = 0; j < length; j++) progBuffer[j] = *(data + i + j);
@@ -3084,9 +3078,6 @@ bool MPU9250::writeDMPConfigurationSet(const uint8_t *data, uint16_t dataSize, b
             } else {
                 special = data[i++];
             }
-            /*Serial.print("Special command code ");
-            Serial.print(special, HEX);
-            Serial.println(" found...");*/
             if (special == 0x01) {
                 // enable DMP-related interrupts
                 
@@ -3363,59 +3354,59 @@ const unsigned char dmpUpdates[MPU9250_DMP_UPDATES_SIZE] = {
 
 uint8_t MPU9250::dmpInitialize() {
     // reset device
-    LOG.info("\n\nResetting MPU9250...");
+    LOG.info() << "\n\nResetting MPU9250..." << LOG.flush;
     reset();
     HAL_Delay(30); // wait after reset
 
     // disable sleep mode
-    LOG.info("Disabling sleep mode...");
+    LOG.info() << "Disabling sleep mode..." << LOG.flush;
     setSleepEnabled(false);
 
     // get MPU hardware revision
-    LOG.info("Selecting user bank 16...");
+    LOG.info() << "Selecting user bank 16..." << LOG.flush;
     setMemoryBank(0x10, true, true);
-    LOG.info("Selecting memory byte 6...");
+    LOG.info() << "Selecting memory byte 6..." << LOG.flush;
     setMemoryStartAddress(0x06);
-    LOG.info("Checking hardware revision...");
+    LOG.info() << "Checking hardware revision..." << LOG.flush;
     readMemoryByte();
-    LOG.info("Resetting memory bank selection to 0...");
+    LOG.info() << "Resetting memory bank selection to 0..." << LOG.flush;
     setMemoryBank(0, false, false);
 
     // check OTP bank valid
-    LOG.info("Reading OTP bank valid flag...");
+    LOG.info() << "Reading OTP bank valid flag..." << LOG.flush;
     uint8_t otpValid = getOTPBankValid();
-    LOG.info("OTP bank is ");
-    LOG.info(otpValid ? "valid!" : "invalid!");
+    LOG.info() << "OTP bank is " << LOG.flush;
+    LOG.info() << (otpValid ? "valid!" : "invalid!") << LOG.flush;
 
     // get X/Y/Z gyro offsets
-    LOG.info("Reading gyro offset values...");
+    LOG.info() << "Reading gyro offset values..." << LOG.flush;
     int8_t xgOffset = getXGyroOffset();
     int8_t ygOffset = getYGyroOffset();
     int8_t zgOffset = getZGyroOffset();
-    LOG.info("X gyro offset = ", xgOffset);
-    LOG.info("Y gyro offset = ", ygOffset);
-    LOG.info("Z gyro offset = ", zgOffset);
+    LOG.info() << "X gyro offset = " << xgOffset << LOG.flush;
+    LOG.info() << "Y gyro offset = " << ygOffset << LOG.flush;
+    LOG.info() << "Z gyro offset = " << zgOffset << LOG.flush;
     
     i2cDevice.readByte(devAddr, MPU9250_RA_USER_CTRL, buffer);
     
-    LOG.info("Enabling interrupt latch, clear on any read, AUX bypass enabled");
+    LOG.info() << "Enabling interrupt latch, clear on any read, AUX bypass enabled" << LOG.flush;
     i2cDevice.writeByte(devAddr, MPU9250_RA_INT_PIN_CFG, 0x32);
 
     // включаем MPU AUX I2C bypass для получения значений чувствительности осей
-    LOG.info("Enabling AUX I2C bypass mode...");
+    LOG.info() << "Enabling AUX I2C bypass mode..." << LOG.flush;
     setI2CBypassEnabled(true);
 
-    LOG.info("Setting magnetometer mode to power-down...");
+    LOG.info() << "Setting magnetometer mode to power-down..." << LOG.flush;
     // mag -> setMode(0);
     // заменил адрес магнитометра на актуальный
     i2cDevice.writeByte(AK8963_I2C_ADDR, 0x0A, 0x00);
 
-    LOG.info("Setting magnetometer mode to fuse access...");
+    LOG.info() << "Setting magnetometer mode to fuse access..." << LOG.flush;
     // mag -> setMode(0x0F);
     // заменил адрес магнитометра на актуальный
     i2cDevice.writeByte(AK8963_I2C_ADDR, 0x0A, 0x0F);
 
-    LOG.info("Reading mag magnetometer factory calibration...");
+    LOG.info() << "Reading mag magnetometer factory calibration..." << LOG.flush;
     // mag -> getAdjustment(&asax, &asay, &asaz);
     // получаем заводские данные чувствительности
     i2cDevice.readReg(AK8963_I2C_ADDR, 0x10, 3, buffer);
@@ -3424,241 +3415,241 @@ uint8_t MPU9250::dmpInitialize() {
     asaz = (int8_t)buffer[2];
     std::stringstream ss;
     ss << "Adjustment X/Y/Z = " << asax << " / " << asay << " / " << asaz;
-    LOG.info(ss.str());
+    LOG.info() << ss.str() << LOG.flush;
 
-    LOG.info("Setting magnetometer mode to power-down...");
+    LOG.info() << "Setting magnetometer mode to power-down..." << LOG.flush;
     // mag -> setMode(0);
     // заменил адрес магнитометра на актуальный
     i2cDevice.writeByte(AK8963_I2C_ADDR, 0x0A, 0x00);
 
     // load DMP code into memory banks
-    LOG.info("Writing DMP code to MPU memory banks. bytes = ", MPU9250_DMP_CODE_SIZE);
+    LOG.info() << "Writing DMP code to MPU memory banks. bytes = " << MPU9250_DMP_CODE_SIZE << LOG.flush;
     if (writeProgMemoryBlock(dmpMemory, MPU9250_DMP_CODE_SIZE)) {
-        LOG.info("Success! DMP code written and verified.");
+        LOG.info() << "Success! DMP code written and verified." << LOG.flush;
 
-        LOG.info("Configuring DMP and related settings...");
+        LOG.info() << "Configuring DMP and related settings..." << LOG.flush;
 
         // write DMP configuration
-        LOG.info("Writing DMP configuration to MPU memory banks. bytes = ",MPU9250_DMP_CONFIG_SIZE);
+        LOG.info() << "Writing DMP configuration to MPU memory banks. bytes = " << MPU9250_DMP_CONFIG_SIZE << LOG.flush;
         if (writeProgDMPConfigurationSet(dmpConfig, MPU9250_DMP_CONFIG_SIZE)) {
-            LOG.info("Success! DMP configuration written and verified.");
+            LOG.info() << "Success! DMP configuration written and verified." << LOG.flush;
 
-            LOG.info("Setting DMP and FIFO_OFLOW interrupts enabled...");
+            LOG.info() << "Setting DMP and FIFO_OFLOW interrupts enabled..." << LOG.flush;
             setIntEnabled(0x12);
 
-            LOG.info("Setting sample rate to 200Hz...");
+            LOG.info() << "Setting sample rate to 200Hz..." << LOG.flush;
             setRate(4); // 1khz / (1 + 4) = 200 Hz
 
-            LOG.info("Setting clock source to Z Gyro...");
+            LOG.info() << "Setting clock source to Z Gyro..." << LOG.flush;
             setClockSource(MPU9250_CLOCK_PLL_ZGYRO);
 
-            LOG.info("Setting DLPF bandwidth to 42Hz...");
+            LOG.info() << "Setting DLPF bandwidth to 42Hz..." << LOG.flush;
             setDLPFMode(MPU9250_DLPF_BW_42);
 
-            LOG.info("Setting external frame sync to TEMP_OUT_L[0]...");
+            LOG.info() << "Setting external frame sync to TEMP_OUT_L[0]..." << LOG.flush;
             setExternalFrameSync(MPU9250_EXT_SYNC_TEMP_OUT_L);
 
-            LOG.info("Setting gyro sensitivity to +/- 2000 deg/sec...");
+            LOG.info() << "Setting gyro sensitivity to +/- 2000 deg/sec..." << LOG.flush;
             setFullScaleGyroRange(MPU9250_GYRO_FS_2000);
 
-            LOG.info("Setting DMP configuration bytes (function unknown)...");
+            LOG.info() << "Setting DMP configuration bytes (function unknown)..." << LOG.flush;
             setDMPConfig1(0x03);
             setDMPConfig2(0x00);
 
-            LOG.info("Clearing OTP Bank flag...");
+            LOG.info() << "Clearing OTP Bank flag..." << LOG.flush;
             setOTPBankValid(false);
 
-            LOG.info("Setting X/Y/Z gyro offsets to previous values...");
+            LOG.info() << "Setting X/Y/Z gyro offsets to previous values..." << LOG.flush;
             setXGyroOffset(xgOffset);
             setYGyroOffset(ygOffset);
             setZGyroOffset(zgOffset);
 
-            LOG.info("Setting X/Y/Z gyro user offsets to zero...");
+            LOG.info() << "Setting X/Y/Z gyro user offsets to zero..." << LOG.flush;
             setXGyroOffset(0);
             setYGyroOffset(0);
             setZGyroOffset(0);
 
-            LOG.info("Writing final memory update 1/19 (function unknown)...");
+            LOG.info() << "Writing final memory update 1/19 (function unknown)..." << LOG.flush;
             uint8_t dmpUpdate[16], j;
             uint16_t pos = 0;
             for (j = 0; j < 4 || j < dmpUpdate[2] + 3; j++, pos++) dmpUpdate[j] = dmpUpdates[pos];
             writeMemoryBlock(dmpUpdate + 3, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1]);
 
-            LOG.info("Writing final memory update 2/19 (function unknown)...");
+            LOG.info() << "Writing final memory update 2/19 (function unknown)..." << LOG.flush;
             for (j = 0; j < 4 || j < dmpUpdate[2] + 3; j++, pos++) dmpUpdate[j] = dmpUpdates[pos];
             writeMemoryBlock(dmpUpdate + 3, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1]);
 
-            LOG.info("Resetting FIFO...");
+            LOG.info() << "Resetting FIFO..." << LOG.flush;
             resetFIFO();
 
-            LOG.info("Reading FIFO count...");
+            LOG.info() << "Reading FIFO count..." << LOG.flush;
             uint8_t fifoCount = getFIFOCount();
 
-            LOG.info("Current FIFO count=", fifoCount);
+            LOG.info() << "Current FIFO count=" << fifoCount << LOG.flush;
             uint8_t fifoBuffer[128];
             //getFIFOBytes(fifoBuffer, fifoCount);
 
-            LOG.info("Writing final memory update 3/19 (function unknown)...");
+            LOG.info() << "Writing final memory update 3/19 (function unknown)..." << LOG.flush;
             for (j = 0; j < 4 || j < dmpUpdate[2] + 3; j++, pos++) dmpUpdate[j] = dmpUpdates[pos];
             writeMemoryBlock(dmpUpdate + 3, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1]);
 
-            LOG.info("Writing final memory update 4/19 (function unknown)...");
+            LOG.info() << "Writing final memory update 4/19 (function unknown)..." << LOG.flush;
             for (j = 0; j < 4 || j < dmpUpdate[2] + 3; j++, pos++) dmpUpdate[j] = dmpUpdates[pos];
             writeMemoryBlock(dmpUpdate + 3, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1]);
 
-            LOG.info("Disabling all standby flags...");
+            LOG.info() << "Disabling all standby flags..." << LOG.flush;
             i2cDevice.writeByte(0x68, MPU9250_RA_PWR_MGMT_2, 0x00);
 
-            LOG.info("Setting accelerometer sensitivity to +/- 2g...");
+            LOG.info() << "Setting accelerometer sensitivity to +/- 2g..." << LOG.flush;
             i2cDevice.writeByte(0x68, MPU9250_RA_ACCEL_CONFIG, 0x00);
 
-            LOG.info("Setting motion detection threshold to 2...");
+            LOG.info() << "Setting motion detection threshold to 2..." << LOG.flush;
             setMotionDetectionThreshold(2);
 
-            LOG.info("Setting zero-motion detection threshold to 156...");
+            LOG.info() << "Setting zero-motion detection threshold to 156..." << LOG.flush;
             setZeroMotionDetectionThreshold(156);
 
-            LOG.info("Setting motion detection duration to 80...");
+            LOG.info() << "Setting motion detection duration to 80..." << LOG.flush;
             setMotionDetectionDuration(80);
 
-            LOG.info("Setting zero-motion detection duration to 0...");
+            LOG.info() << "Setting zero-motion detection duration to 0..." << LOG.flush;
             setZeroMotionDetectionDuration(0);
 
-            LOG.info("Setting AK8963 to single measurement mode...");
+            LOG.info() << "Setting AK8963 to single measurement mode..." << LOG.flush;
             // mag -> setMode(1);
             // заменил адрес магнитометра на актуальный
             i2cDevice.writeByte(AK8963_I2C_ADDR, 0x0A, 0x01);
 
             // setup AK8963 (0x0C) as Slave 0 in read mode
             // заменил адрес магнитометра на актуальный
-            LOG.info("Setting up AK8963 read slave 0...");
+            LOG.info() << "Setting up AK8963 read slave 0..." << LOG.flush;
             i2cDevice.writeByte(0x68, MPU9250_RA_I2C_SLV0_ADDR, AK8963_I2C_ADDR|0x80);
             i2cDevice.writeByte(0x68, MPU9250_RA_I2C_SLV0_REG,  0x01);
             i2cDevice.writeByte(0x68, MPU9250_RA_I2C_SLV0_CTRL, 0xDA);
 
             // setup AK8963 (0x0C) as Slave 2 in write mode
             // заменил адрес магнитометра на актуальный
-            LOG.info("Setting up AK8963 write slave 2...");
+            LOG.info() << "Setting up AK8963 write slave 2..." << LOG.flush;
             i2cDevice.writeByte(0x68, MPU9250_RA_I2C_SLV2_ADDR, AK8963_I2C_ADDR);
             i2cDevice.writeByte(0x68, MPU9250_RA_I2C_SLV2_REG,  0x0A);
             i2cDevice.writeByte(0x68, MPU9250_RA_I2C_SLV2_CTRL, 0x81);
             i2cDevice.writeByte(0x68, MPU9250_RA_I2C_SLV2_DO,   0x01);
 
             // setup I2C timing/delay control
-            LOG.info("Setting up slave access delay...");
+            LOG.info() << "Setting up slave access delay..." << LOG.flush;
             i2cDevice.writeByte(0x68, MPU9250_RA_I2C_SLV4_CTRL, 0x18);
             i2cDevice.writeByte(0x68, MPU9250_RA_I2C_MST_DELAY_CTRL, 0x05);
             
             // enable interrupts
-            LOG.info("Enabling default interrupt behavior/no bypass...");
+            LOG.info() << "Enabling default interrupt behavior/no bypass..." << LOG.flush;
             i2cDevice.writeByte(0x68, MPU9250_RA_INT_PIN_CFG, 0x00);
 
             // enable I2C master mode and reset DMP/FIFO
-            LOG.info("Enabling I2C master mode...");
+            LOG.info() << "Enabling I2C master mode..." << LOG.flush;
             i2cDevice.writeByte(0x68, MPU9250_RA_USER_CTRL, 0x20);
-            LOG.info("Resetting FIFO...");
+            LOG.info() << "Resetting FIFO..." << LOG.flush;
             i2cDevice.writeByte(0x68, MPU9250_RA_USER_CTRL, 0x24);
-            LOG.info("Rewriting I2C master mode enabled because...I don't know");
+            LOG.info() << "Rewriting I2C master mode enabled because...I don't know" << LOG.flush;
             i2cDevice.writeByte(0x68, MPU9250_RA_USER_CTRL, 0x20);
-            LOG.info("Enabling and resetting DMP/FIFO...");
+            LOG.info() << "Enabling and resetting DMP/FIFO..." << LOG.flush;
             i2cDevice.writeByte(0x68, MPU9250_RA_USER_CTRL, 0xE8);
 
-            LOG.info("Writing final memory update 5/19 (function unknown)...");
+            LOG.info() << "Writing final memory update 5/19 (function unknown)..." << LOG.flush;
             for (j = 0; j < 4 || j < dmpUpdate[2] + 3; j++, pos++) dmpUpdate[j] = dmpUpdates[pos];
             writeMemoryBlock(dmpUpdate + 3, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1]);
-            LOG.info("Writing final memory update 6/19 (function unknown)...");
+            LOG.info() << "Writing final memory update 6/19 (function unknown)..." << LOG.flush;
             for (j = 0; j < 4 || j < dmpUpdate[2] + 3; j++, pos++) dmpUpdate[j] = dmpUpdates[pos];
             writeMemoryBlock(dmpUpdate + 3, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1]);
-            LOG.info("Writing final memory update 7/19 (function unknown)...");
+            LOG.info() << "Writing final memory update 7/19 (function unknown)..." << LOG.flush;
             for (j = 0; j < 4 || j < dmpUpdate[2] + 3; j++, pos++) dmpUpdate[j] = dmpUpdates[pos];
             writeMemoryBlock(dmpUpdate + 3, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1]);
-            LOG.info("Writing final memory update 8/19 (function unknown)...");
+            LOG.info() << "Writing final memory update 8/19 (function unknown)..." << LOG.flush;
             for (j = 0; j < 4 || j < dmpUpdate[2] + 3; j++, pos++) dmpUpdate[j] = dmpUpdates[pos];
             writeMemoryBlock(dmpUpdate + 3, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1]);
-            LOG.info("Writing final memory update 9/19 (function unknown)...");
+            LOG.info() << "Writing final memory update 9/19 (function unknown)..." << LOG.flush;
             for (j = 0; j < 4 || j < dmpUpdate[2] + 3; j++, pos++) dmpUpdate[j] = dmpUpdates[pos];
             writeMemoryBlock(dmpUpdate + 3, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1]);
-            LOG.info("Writing final memory update 10/19 (function unknown)...");
+            LOG.info() << "Writing final memory update 10/19 (function unknown)..." << LOG.flush;
             for (j = 0; j < 4 || j < dmpUpdate[2] + 3; j++, pos++) dmpUpdate[j] = dmpUpdates[pos];
             writeMemoryBlock(dmpUpdate + 3, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1]);
-            LOG.info("Writing final memory update 11/19 (function unknown)...");
+            LOG.info() << "Writing final memory update 11/19 (function unknown)..." << LOG.flush;
             for (j = 0; j < 4 || j < dmpUpdate[2] + 3; j++, pos++) dmpUpdate[j] = dmpUpdates[pos];
             writeMemoryBlock(dmpUpdate + 3, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1]);
             
-            LOG.info("Reading final memory update 12/19 (function unknown)...");
+            LOG.info() << "Reading final memory update 12/19 (function unknown)..." << LOG.flush;
             for (j = 0; j < 4 || j < dmpUpdate[2] + 3; j++, pos++) dmpUpdate[j] = dmpUpdates[pos];
             readMemoryBlock(dmpUpdate + 3, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1]);
             #ifdef DEBUG
-                LOG.info("Read bytes: ");
+                LOG.info() << "Read bytes: " << LOG.flush;
                 for (j = 0; j < 4; j++) {
                     DEBUG_PRINTF(dmpUpdate[3 + j], HEX);
-                    LOG.info(" ");
+                    LOG.info() << " " << LOG.flush;
                 }
-                LOG.info("");
+                LOG.info() << "" << LOG.flush;
             #endif
 
-            LOG.info("Writing final memory update 13/19 (function unknown)...");
+            LOG.info() << "Writing final memory update 13/19 (function unknown)..." << LOG.flush;
             for (j = 0; j < 4 || j < dmpUpdate[2] + 3; j++, pos++) dmpUpdate[j] = dmpUpdates[pos];
             writeMemoryBlock(dmpUpdate + 3, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1]);
-            LOG.info("Writing final memory update 14/19 (function unknown)...");
+            LOG.info() << "Writing final memory update 14/19 (function unknown)..." << LOG.flush;
             for (j = 0; j < 4 || j < dmpUpdate[2] + 3; j++, pos++) dmpUpdate[j] = dmpUpdates[pos];
             writeMemoryBlock(dmpUpdate + 3, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1]);
-            LOG.info("Writing final memory update 15/19 (function unknown)...");
+            LOG.info() << "Writing final memory update 15/19 (function unknown)..." << LOG.flush;
             for (j = 0; j < 4 || j < dmpUpdate[2] + 3; j++, pos++) dmpUpdate[j] = dmpUpdates[pos];
             writeMemoryBlock(dmpUpdate + 3, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1]);
-            LOG.info("Writing final memory update 16/19 (function unknown)...");
+            LOG.info() << "Writing final memory update 16/19 (function unknown)..." << LOG.flush;
             for (j = 0; j < 4 || j < dmpUpdate[2] + 3; j++, pos++) dmpUpdate[j] = dmpUpdates[pos];
             writeMemoryBlock(dmpUpdate + 3, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1]);
-            LOG.info("Writing final memory update 17/19 (function unknown)...");
+            LOG.info() << "Writing final memory update 17/19 (function unknown)..." << LOG.flush;
             for (j = 0; j < 4 || j < dmpUpdate[2] + 3; j++, pos++) dmpUpdate[j] = dmpUpdates[pos];
             writeMemoryBlock(dmpUpdate + 3, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1]);
 
-            LOG.info("Waiting for FIRO count >= 46...");
+            LOG.info() << "Waiting for FIRO count >= 46..." << LOG.flush;
             while ((fifoCount = getFIFOCount()) < 46);
-            LOG.info("Reading FIFO...");
+            LOG.info() << "Reading FIFO..." << LOG.flush;
             getFIFOBytes(fifoBuffer, std::min(fifoCount, (uint8_t)128)); // safeguard only 128 bytes
-            LOG.info("Reading interrupt status...");
+            LOG.info() << "Reading interrupt status..." << LOG.flush;
             getIntStatus();
 
-            LOG.info("Writing final memory update 18/19 (function unknown)...");
+            LOG.info() << "Writing final memory update 18/19 (function unknown)..." << LOG.flush;
             for (j = 0; j < 4 || j < dmpUpdate[2] + 3; j++, pos++) dmpUpdate[j] = dmpUpdates[pos];
             writeMemoryBlock(dmpUpdate + 3, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1]);
 
-            LOG.info("Waiting for FIRO count >= 48...");
+            LOG.info() << "Waiting for FIRO count >= 48..." << LOG.flush;
             while ((fifoCount = getFIFOCount()) < 48);
-            LOG.info("Reading FIFO...");
+            LOG.info() << "Reading FIFO..." << LOG.flush;
             getFIFOBytes(fifoBuffer, std::min(fifoCount, (uint8_t)128)); // safeguard only 128 bytes
-            LOG.info("Reading interrupt status...");
+            LOG.info() << "Reading interrupt status..." << LOG.flush;
             getIntStatus();
-            LOG.info("Waiting for FIRO count >= 48...");
+            LOG.info() << "Waiting for FIRO count >= 48..." << LOG.flush;
             while ((fifoCount = getFIFOCount()) < 48);
-            LOG.info("Reading FIFO...");
+            LOG.info() << "Reading FIFO..." << LOG.flush;
             getFIFOBytes(fifoBuffer, std::min(fifoCount, (uint8_t)128)); // safeguard only 128 bytes
-            LOG.info("Reading interrupt status...");
+            LOG.info() << "Reading interrupt status..." << LOG.flush;
             getIntStatus();
 
-            LOG.info("Writing final memory update 19/19 (function unknown)...");
+            LOG.info() << "Writing final memory update 19/19 (function unknown)..." << LOG.flush;
             for (j = 0; j < 4 || j < dmpUpdate[2] + 3; j++, pos++) dmpUpdate[j] = dmpUpdates[pos];
             writeMemoryBlock(dmpUpdate + 3, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1]);
 
-            LOG.info("Disabling DMP (you turn it on later)...");
+            LOG.info() << "Disabling DMP (you turn it on later)..." << LOG.flush;
             setDMPEnabled(false);
 
-            LOG.info("Setting up internal 48-byte (default) DMP packet buffer...");
+            LOG.info() << "Setting up internal 48-byte (default) DMP packet buffer..." << LOG.flush;
             dmpPacketSize = 48;
             /*if ((dmpPacketBuffer = (uint8_t *)malloc(42)) == 0) {
                 return 3; // TODO: proper error code for no memory
             }*/
 
-            LOG.info("Resetting FIFO and clearing INT status one last time...");
+            LOG.info() << "Resetting FIFO and clearing INT status one last time..." << LOG.flush;
             resetFIFO();
             getIntStatus();
         } else {
-            LOG.error("DMP configuration verification failed.");
+            LOG.error() << "DMP configuration verification failed." << LOG.flush;
             return 2; // configuration block loading failed
         }
     } else {
-        LOG.error("DMP code verification failed.");
+        LOG.error() << "DMP code verification failed." << LOG.flush;
         return 1; // main binary block loading failed
     }
     return 0; // success
@@ -3826,11 +3817,11 @@ uint8_t MPU9250::dmpGetYawPitchRoll(float *data, Quaternion *q, VectorFloat *gra
 
 uint8_t MPU9250::dmpProcessFIFOPacket(const unsigned char *dmpData) {
     /*for (uint8_t k = 0; k < dmpPacketSize; k++) {
-        if (dmpData[k] < 0x10) Serial.print("0");
+        if (dmpData[k] < 0x10) Serial.print("0" << LOG.flush;
         Serial.print(dmpData[k], HEX);
-        Serial.print(" ");
+        Serial.print(" " << LOG.flush;
     }
-    Serial.print("\n");*/
+    Serial.print("\n" << LOG.flush;*/
     //Serial.println((uint16_t)dmpPacketBuffer);
     return 0;
 }

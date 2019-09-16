@@ -440,6 +440,7 @@ THE SOFTWARE.
 class MPU9250 {
     public:
         MPU9250(uint8_t address, I2CDevice &i2cDevice) : devAddr(address), i2cDevice(i2cDevice) {}
+        MPU9250(const MPU9250& other): devAddr(other.devAddr), i2cDevice(other.i2cDevice) {}
 
         void initialize();
         bool testConnection();

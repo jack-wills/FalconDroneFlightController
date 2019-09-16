@@ -74,7 +74,7 @@ int main(void) {
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
     
     Logger LOG = Logger("main");
-    LOG.info("Falcon start up!");
+    LOG.info() << "Falcon start up!" << LOG.flush;
     
     IMU imu = IMU(0x69);
 	

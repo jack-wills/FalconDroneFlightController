@@ -13,12 +13,16 @@ IMU::IMU(uint8_t sensorAddress): i2cDevice(I2CDevice()), mpu(MPU9250(sensorAddre
     calibrateGyro();
 }
 
+IMU::IMU(const IMU& other): i2cDevice(other.i2cDevice), mpu(other.mpu) {
+
+}
+
 IMU::~IMU() {
 
 }
 
 void IMU::calibrateGyro() {
-    LOG.info("Starting calibrations...");
+    LOG.info() << "Starting calibrations..." << LOG.flush;
     for(int i = 0; i < 500; i++){
         mpu.getRotation(&gXRaw,&gYRaw,&gZRaw);
         gXOffset += gXRaw;
@@ -26,7 +30,7 @@ void IMU::calibrateGyro() {
         gZOffset += gZRaw;
         HAL_Delay(3);
     }
-    LOG.info("Calibrations Finished");
+    LOG.info() << "Calibrations Finished" << LOG.flush;
     gXOffset /= 500;
     gYOffset /= 500;
     gZOffset /= 500;
@@ -55,15 +59,11 @@ void IMU::printAngles() {
     float roll,pitch,yaw;
     getAngles(&pitch, &roll, &yaw);
 
-    std::stringstream ss;
-    ss << "Angle: " << LOG.ftoa(roll, 2) << " ,\t " << LOG.ftoa(pitch, 2) << " ,\t " << LOG.ftoa(yaw, 2);
-    LOG.info(ss.str());
+    LOG.info() << "Angle: " << roll << " ,\t " << pitch << " ,\t " << yaw << LOG.flush;
 }
 
 void IMU::printQuaternions() {
-    std::stringstream ss;
-    ss << "Quaternion: " << LOG.ftoa(q0, 2) << " ,\t " << LOG.ftoa(q1, 2) << " ,\t " << LOG.ftoa(q2, 2) << " ,\t " << LOG.ftoa(q3, 2);
-    LOG.info(ss.str());
+    LOG.info() << "Quaternion: " << q0 << " ,\t " << q1 << " ,\t " << q2 << " ,\t " << q3 << LOG.flush;
 }
 
 void IMU::update6Dof() {

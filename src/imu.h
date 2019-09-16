@@ -8,6 +8,7 @@ class IMU
 {
 public:
 	IMU(uint8_t sensorAddress);
+    IMU(const IMU& other);
 	~IMU();
 	void update6Dof();
 	void update();
