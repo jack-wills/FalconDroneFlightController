@@ -7,42 +7,43 @@
 
 #include "logger.h"
 #include "i2cdevice.h"
+#include "mpu9250.h"
 
 /*----------------------------------------------------------------------------
  * SystemCoreClockConfigure: configure SystemCoreClock using HSI
                              (HSE is not populated on Nucleo board)
  *----------------------------------------------------------------------------*/
 void SystemCoreClockConfigure(void) {
-    RCC->CR |= ((uint32_t)RCC_CR_HSION);                     // Enable HSI
-    while ((RCC->CR & RCC_CR_HSIRDY) == 0);                  // Wait for HSI Ready
+    RCC_OscInitTypeDef RCC_OscInitStruct;
+    RCC_ClkInitTypeDef RCC_ClkInitStruct;
 
-    RCC->CFGR = RCC_CFGR_SW_HSI;                             // HSI is system clock
-    while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_HSI);  // Wait for HSI used as system clock
+    /** Configure the main internal regulator output voltage 
+     */
+    __HAL_RCC_PWR_CLK_ENABLE();
+    __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE2);
+    /** Initializes the CPU, AHB and APB busses clocks 
+     */
+    RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+    RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+    RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+    RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+    RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
+    RCC_OscInitStruct.PLL.PLLM = 16;
+    RCC_OscInitStruct.PLL.PLLN = 336;
+    RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV4;
+    RCC_OscInitStruct.PLL.PLLQ = 7;
+    HAL_RCC_OscConfig(&RCC_OscInitStruct);
 
-    FLASH->ACR  = FLASH_ACR_PRFTEN;                          // Enable Prefetch Buffer
-    FLASH->ACR |= FLASH_ACR_ICEN;                            // Instruction cache enable
-    FLASH->ACR |= FLASH_ACR_DCEN;                            // Data cache enable
-    FLASH->ACR |= FLASH_ACR_LATENCY_5WS;                     // Flash 5 wait state
+    /** Initializes the CPU, AHB and APB busses clocks 
+     */
+    RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+                            |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+    RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+    RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+    RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
+    RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-    RCC->CFGR |= RCC_CFGR_HPRE_DIV1;                         // HCLK = SYSCLK
-    RCC->CFGR |= RCC_CFGR_PPRE1_DIV4;                        // APB1 = HCLK/4
-    RCC->CFGR |= RCC_CFGR_PPRE2_DIV2;                        // APB2 = HCLK/2
-
-    RCC->CR &= ~RCC_CR_PLLON;                                // Disable PLL
-
-    // PLL configuration:  VCO = HSI/M * N,  Sysclk = VCO/P
-    RCC->PLLCFGR = ( 16ul                   |                // PLL_M =  16
-                    (384ul <<  6)            |                // PLL_N = 384
-                    (  3ul << 16)            |                // PLL_P =   8
-                    (RCC_PLLCFGR_PLLSRC_HSI) |                // PLL_SRC = HSI
-                    (  8ul << 24)             );              // PLL_Q =   8
-
-    RCC->CR |= RCC_CR_PLLON;                                 // Enable PLL
-    while((RCC->CR & RCC_CR_PLLRDY) == 0) __NOP();           // Wait till PLL is ready
-
-    RCC->CFGR &= ~RCC_CFGR_SW;                               // Select PLL as system clock source
-    RCC->CFGR |=  RCC_CFGR_SW_PLL;
-    while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_PLL);  // Wait till PLL is system clock src
+    HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2);
 }
 
 extern "C" void SysTick_Handler(void)
@@ -65,11 +66,6 @@ int main(void) {
     __GPIOB_CLK_ENABLE(); 
     __GPIOC_CLK_ENABLE(); 
     __GPIOD_CLK_ENABLE(); 
-    
-    Logger LOG = Logger("main");
-    LOG.info("Falcon start up!");
-
-    I2CDevice i2cDevice = I2CDevice();
 
     GPIO_InitTypeDef GPIO_InitStruct; 
 
@@ -77,26 +73,104 @@ int main(void) {
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP; // digital Input
     GPIO_InitStruct.Pull = GPIO_NOPULL; 
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+    
+    Logger LOG = Logger("main");
+    LOG.info("Falcon start up!");
 
-    i2cDevice.writeReg(0x68, 0x6B, 0x00);
+    I2CDevice i2cDevice = I2CDevice();
+
+    MPU9250 mpu = MPU9250(0x69, i2cDevice);
+
+    uint8_t accelFullScale = MPU9250_ACCEL_FS_8;
+    mpu.setFullScaleAccelRange(accelFullScale);
+    float aRes = ((float)(accelFullScale+1))/16384.0f;
+
+    uint8_t gyroFullScale = MPU9250_GYRO_FS_500;
+    mpu.setFullScaleGyroRange(gyroFullScale);
+    float gRes = ((float)(gyroFullScale+1))/131.0f;
+
+    int16_t aXRaw,aYRaw,aZRaw,gXRaw,gYRaw,gZRaw,mXRaw,mYRaw,mZRaw;
+
+    int64_t gXOffset = 0, gYOffset = 0, gZOffset = 0;
+    float aXOffset = 0.82f, aYOffset = 0.05f, aZOffset = -0.21;
+
+    float aX,aY,aZ,gX,gY,gZ;
+    float pitch,roll,yaw;
+    float aPitch,aRoll;
+
+    //Calc starting heading from just acceleration values;
+    mpu.getAcceleration(&aXRaw, &aYRaw, &aZRaw);
+    aX = (float)aXRaw*aRes;
+    aY = (float)aYRaw*aRes;   
+    aZ = (float)aZRaw*aRes; 
+    pitch = atan2((float)aY, (float)aZ) * 57.296f;
+    roll = atan2((float)aX, (float)aZ) * -57.296f;
+    yaw = 0;
+
+    LOG.info("Starting calibrations...");
+    for(int i = 0; i < 500; i++){
+        mpu.getRotation(&gXRaw,&gYRaw,&gZRaw);
+        gXOffset += gXRaw;
+        gYOffset += gYRaw;
+        gZOffset += gZRaw;
+        HAL_Delay(3);
+    }
+
+    LOG.info("Calibrations Finished");
+    gXOffset /= 500;
+    gYOffset /= 500;
+    gZOffset /= 500;
+
+    uint64_t tLast = HAL_GetTick();
+    int count = 0;
 	
     while(1) {
-        uint8_t aRxBuffer[14]; 
-        i2cDevice.readReg(0x68, aRxBuffer, 14, 0x3B);
-        int16_t accelX = (int16_t)(aRxBuffer[0]<<8|aRxBuffer[1]);
-        int16_t accelY = (int16_t)(aRxBuffer[2]<<8|aRxBuffer[3]);
-        int16_t accelZ = (int16_t)(aRxBuffer[4]<<8|aRxBuffer[5]);
-        int16_t temp = (int16_t)(aRxBuffer[6]<<8|aRxBuffer[7]);
-        int16_t gyroX = (int16_t)(aRxBuffer[8]<<8|aRxBuffer[9]);
-        int16_t gyroY = (int16_t)(aRxBuffer[10]<<8|aRxBuffer[11]);
-        int16_t gyroZ = (int16_t)(aRxBuffer[12]<<8|aRxBuffer[13]);
-        std::stringstream ss;
-        ss << "results: ";
-        for(int i=0; i<7; ++i) {
-            ss << (int16_t)(aRxBuffer[2*i]<<8|aRxBuffer[(2*i)+1]) << ",";
+        mpu.getMotion9(&aXRaw,&aYRaw,&aZRaw,&gXRaw,&gYRaw,&gZRaw,&mXRaw,&mYRaw,&mZRaw);
+
+        aX = (float)(aXRaw*aRes)-aXOffset;
+        aY = (float)(aYRaw*aRes)-aYOffset;   
+        aZ = (float)(aZRaw*aRes)-aZOffset; 
+
+        aPitch = atan2((float)aY, (float)aZ) * 57.296f;
+        aRoll = atan2((float)aX, (float)aZ) * -57.296f;
+
+        gX = (float)(gXRaw-gXOffset)*gRes;
+        gY = (float)(gYRaw-gYOffset)*gRes;  
+        gZ = (float)(gZRaw-gZOffset)*gRes; 
+        if (count != 0) {
+            pitch += gX * 0.005;
+            roll += gY * 0.005;
+            yaw += gZ * 0.005;
+        } else {
+            // Print cycle
+            pitch += gX * 0.05;
+            roll += gY * 0.05;
+            yaw += gZ * 0.05;
         }
-        LOG.info(ss.str());
-        HAL_Delay(1000);
+
+        pitch += roll * sin(gZ * 0.01745f * 0.05);
+        roll -= pitch * sin(gZ * 0.01745f * 0.05);
+
+        pitch = pitch * 0.95f + aPitch * 0.05f;
+        roll = roll * 0.95f + aRoll * 0.05f;
+        
+        while(HAL_GetTick() - tLast < 5);
+        tLast = HAL_GetTick();
+
+        if (count++ < 3) {
+            while(HAL_GetTick() - tLast < 5);
+            tLast = HAL_GetTick();
+        } else {
+            // Print cycle
+            count = 0;
+
+            std::stringstream ss;
+            ss << "Angle: " << LOG.ftoa(roll, 2) << " ,\t " << LOG.ftoa(pitch, 2) << " ,\t " << LOG.ftoa(yaw, 2);
+            LOG.info(ss.str());
+            
+            while(HAL_GetTick() - tLast < 50);
+            tLast = HAL_GetTick();
+        }
     }
 }
 

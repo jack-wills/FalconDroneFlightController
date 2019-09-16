@@ -19,9 +19,6 @@ I2CDevice::I2CDevice() {
     I2CHandle.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
 
     I2C_ClearBusyFlagErratum();
-    if (HAL_I2C_Init(&I2CHandle) != HAL_OK) {
-        LOG.error("I2C Failed to Initialise");
-    }
 }
 
 I2CDevice::~I2CDevice() {
@@ -121,28 +118,140 @@ void I2CDevice::I2C_ClearBusyFlagErratum() {
 
     // 15. Enable the I2C peripheral by setting the PE bit in I2Cx_CR1 register
     I2CHandle.Instance->CR1 |= 0x0001;
+
+    if (HAL_I2C_Init(&I2CHandle) != HAL_OK) {
+        LOG.error("I2C Failed to Initialise");
+    }
 }
 
-void I2CDevice::write(char addr, uint8_t* data, int dataSize) {
-    HAL_I2C_Master_Transmit(&I2CHandle, addr<<1, data, dataSize, 10000);
+bool I2CDevice::write(uint8_t addr, uint8_t* data, int dataSize) {
+    HAL_StatusTypeDef result = HAL_I2C_Master_Transmit(&I2CHandle, addr<<1, data, dataSize, 10000);
+    if(result == HAL_OK) {
+        return true;
+    } else {
+        if(result == HAL_ERROR) {
+            LOG.error("I2C request failed due to HAL_ERROR");
+        }
+        if(result == HAL_BUSY) {
+            LOG.error("I2C request failed due to HAL_BUSY");
+            /*I2C_ClearBusyFlagErratum();
+            while(HAL_I2C_Master_Transmit(&I2CHandle, addr<<1, data, dataSize, 10000) != HAL_OK) {
+                HAL_Delay(100);
+            }*/
+        }
+        if(result == HAL_TIMEOUT) {
+            LOG.error("I2C request failed due to HAL_TIMEOUT");
+        }
+        return false;
+    }
 }
 
-void I2CDevice::write(char addr, uint8_t data) {
-    write(addr, &data, 1);
+bool I2CDevice::write(uint8_t addr, uint8_t data) {
+    return write(addr, &data, 1);
 }
 
-void I2CDevice::read(char addr, uint8_t* rXData, int dataSize) { 
-    HAL_I2C_Master_Receive(&I2CHandle, addr<<1, rXData, dataSize, 10000);  
+bool I2CDevice::writeReg(uint8_t addr, uint8_t reg, uint8_t* data, int dataSize) {
+    uint8_t* data_ = (uint8_t*)malloc(sizeof(uint8_t) * (dataSize + 2));
+    data_[0] = reg;
+    memmove(data_+1, data, dataSize);
+    return write(addr, data_, dataSize+1);
 }
 
-void I2CDevice::writeReg(char addr, uint8_t reg, uint8_t data) {
-    uint8_t data_[2] = {reg, data};
-    write(addr, data_, 2);
+bool I2CDevice::writeReg(uint8_t addr, uint8_t reg, int dataSize, uint8_t* data) {
+    return writeReg(addr, reg, data, dataSize);
 }
 
-void I2CDevice::readReg(char addr, uint8_t* rXData, int dataSize, uint8_t reg) { 
-    write(addr, reg);
-    read(addr, rXData, dataSize);
+bool I2CDevice::writeWord(uint8_t addr, uint8_t reg, uint16_t data) {
+    uint8_t data_[3] = {reg, (uint8_t)(data >> 8), (uint8_t)data};
+    return write(addr, data_, 3);
+}
+
+bool I2CDevice::writeByte(uint8_t addr, uint8_t reg, uint8_t data) {
+    return writeReg(addr, reg, &data, 1);
+}
+
+bool I2CDevice::writeBit(uint8_t addr, uint8_t reg, uint8_t bitNum, uint8_t data) {
+    uint8_t b;
+    readByte(addr, reg, &b);
+    b = (data != 0) ? (b | (1 << bitNum)) : (b & ~(1 << bitNum));
+    return writeByte(addr, reg, b);
+}
+
+bool I2CDevice::writeBits(uint8_t addr, uint8_t reg, uint8_t bitStart, uint8_t length, uint8_t data) {
+    //      010 value to write
+    // 76543210 bit numbers
+    //    xxx   args: bitStart=4, length=3
+    // 00011100 mask byte
+    // 10101111 original value (sample)
+    // 10100011 original & ~mask
+    // 10101011 masked | value
+    uint8_t b;
+    if (readByte(addr, reg, &b) != 0) {
+        uint8_t mask = ((1 << length) - 1) << (bitStart - length + 1);
+        data <<= (bitStart - length + 1); // shift data into correct position
+        data &= mask; // zero all non-important bits in data
+        b &= ~(mask); // zero all important bits in existing byte
+        b |= data; // combine data with existing byte
+        return writeByte(addr, reg, b);
+    } else {
+        return false;
+    }
+}
+
+bool I2CDevice::read(uint8_t addr, uint8_t* rXData, int dataSize) { 
+    HAL_StatusTypeDef result = HAL_I2C_Master_Receive(&I2CHandle, addr<<1, rXData, dataSize, 10000);  
+    if(result == HAL_OK) {
+        return true;
+    } else {
+        if(result == HAL_ERROR) {
+            LOG.error("I2C request failed due to HAL_ERROR");
+        }
+        if(result == HAL_BUSY) {
+            LOG.error("I2C request failed due to HAL_BUSY");
+        }
+        if(result == HAL_TIMEOUT) {
+            LOG.error("I2C request failed due to HAL_TIMEOUT");
+        }
+        return false;
+    }
+}
+
+bool I2CDevice::readReg(uint8_t addr, uint8_t reg, uint8_t* rXData, int dataSize) { 
+    bool writeResult = write(addr, reg);
+    bool readResult = read(addr, rXData, dataSize);
+    return writeResult && readResult;
+}
+
+bool I2CDevice::readReg(uint8_t addr, uint8_t reg, int dataSize, uint8_t* rXData) { 
+    return readReg(addr, reg, rXData, dataSize);
+}
+
+bool I2CDevice::readByte(uint8_t addr, uint8_t reg, uint8_t* rXData) {
+    return readReg(addr, reg, rXData, 1);
+}
+
+bool I2CDevice::readBit(uint8_t addr, uint8_t reg, uint8_t bitNum, uint8_t *data) {
+    uint8_t b;
+    bool count = readByte(addr, reg, &b);
+    *data = b & (1 << bitNum);
+    return count;
+}
+
+bool I2CDevice::readBits(uint8_t addr, uint8_t reg, uint8_t bitStart, uint8_t length, uint8_t *data) {
+    // 01101001 read byte
+    // 76543210 bit numbers
+    //    xxx   args: bitStart=4, length=3
+    //    010   masked
+    //   -> 010 shifted
+    uint8_t b;
+    bool result = readByte(addr, reg, &b);
+    if (result) {
+        uint8_t mask = ((1 << length) - 1) << (bitStart - length + 1);
+        b &= mask;
+        b >>= (bitStart - length + 1);
+        *data = b;
+    }
+    return result;
 }
 
 void I2CDevice::scan() {

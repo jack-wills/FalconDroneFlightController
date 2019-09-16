@@ -22,8 +22,8 @@ CFLAGS    = -ffunction-sections
 CFLAGS   += -mlittle-endian
 CFLAGS   += -mthumb
 CFLAGS   += -mcpu=cortex-m4
-CFLAGS   += -mfloat-abi=hard
-CFLAGS   += -mfpu=fpv4-sp-d16
+#CFLAGS   += -mfloat-abi=hard
+#CFLAGS   += -mfpu=fpv4-sp-d16
 CFLAGS   += -std=gnu11
 CFLAGS   += -ggdb
 
@@ -38,8 +38,8 @@ CXXFLAGS  = -ffunction-sections
 CXXFLAGS += -mlittle-endian
 CXXFLAGS += -mthumb
 CXXFLAGS += -mcpu=cortex-m4
-CXXFLAGS += -mfloat-abi=hard
-CXXFLAGS += -mfpu=fpv4-sp-d16
+#CXXFLAGS += -mfloat-abi=hard
+#CXXFLAGS += -mfpu=fpv4-sp-d16
 CXXFLAGS += -ggdb
 
 LFLAGS    = --specs=nano.specs 
@@ -51,7 +51,6 @@ LFLAGS   += -lm
 
 WFLAGS    = -Wall
 WFLAGS   += -Wextra
-WFLAGS   += -Wstrict-prototypes
 WFLAGS   += -Werror -Wno-error=unused-function -Wno-error=unused-variable
 WFLAGS   += -Wfatal-errors
 WFLAGS   += -Warray-bounds
