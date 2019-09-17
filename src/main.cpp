@@ -8,6 +8,7 @@
 #include "logger.h"
 #include "imu.h"
 #include "eeprom.h"
+#include "fccomm.h"
 
 //__attribute__((__section__(".user_data"))) const uint32_t userConfig[64] = {0};
 
@@ -61,9 +62,6 @@ int main(void) {
     SystemCoreClockConfigure();
     SystemCoreClockUpdate();
 
-   // HAL_Flash_
-
-
     __GPIOA_CLK_ENABLE(); 
     __GPIOB_CLK_ENABLE(); 
     __GPIOC_CLK_ENABLE(); 
@@ -90,7 +88,7 @@ int main(void) {
     uint64_t tLast = HAL_GetTick();
     while(1) {
         imu.update();
-        //imu.printAngles();
+        imu.printAngles();
         while(HAL_GetTick() - tLast < 50);
         tLast = HAL_GetTick();
     }

@@ -45,7 +45,7 @@ void MPU9250::initialize() {
     setSleepEnabled(false);
 }
 
-void MPU9250::initAK8963(uint8_t scale, uint8_t rate, float *magCalibration) {
+void MPU9250::initAK8963(uint8_t scale, uint8_t rate) {
     uint8_t rawData[3];  // x/y/z gyro calibration data stored here
 	i2cDevice.writeByte(devAddr, MPU9250_RA_INT_PIN_CFG, 0x02); //set i2c bypass enable pin to true to access magnetometer
 	HAL_Delay(10);
@@ -55,18 +55,6 @@ void MPU9250::initAK8963(uint8_t scale, uint8_t rate, float *magCalibration) {
 	HAL_Delay(10);
     i2cDevice.writeByte(AK8963_I2C_ADDR, AK8963_CNTL1, 0x00);
 	HAL_Delay(10);
-    i2cDevice.writeByte(AK8963_I2C_ADDR, AK8963_CNTL1, 0x0F);                       // Enter fuze mode
-	HAL_Delay(10);
-    
-    i2cDevice.readReg(AK8963_I2C_ADDR, AK8963_ASAX, 3, &rawData[0]);        // Read the x-, y-, and z-axis calibration values
-    
-	HAL_Delay(10);
-    magCalibration[0] =  (float)(rawData[0] - 128)/256.0f + 1.0f;        // Return x-axis sensitivity adjustment values, etc.
-    magCalibration[1] =  (float)(rawData[1] - 128)/256.0f + 1.0f;  
-    magCalibration[2] =  (float)(rawData[2] - 128)/256.0f + 1.0f; 
-    
-    i2cDevice.writeByte(AK8963_I2C_ADDR, AK8963_CNTL, 0x00);                       // Power down magnetometer
-	HAL_Delay(10);  
     
     // Configure the magnetometer for continuous read and highest resolution
     // set Mscale bit 4 to 1 (0) to enable 16 (14) bit resolution in CNTL register,
@@ -1729,12 +1717,7 @@ void MPU9250::getMotion9(int16_t* ax, int16_t* ay, int16_t* az, int16_t* gx, int
 	getMotion6(ax, ay, az, gx, gy, gz);
 	
 	//read mag 
-	i2cDevice.readReg(AK8963_I2C_ADDR, AK8963_XOUT_L, 6, buffer);
-	*mx = (((int16_t)buffer[1]) << 8) | buffer[0];
-    *my = (((int16_t)buffer[3]) << 8) | buffer[2];
-    *mz = (((int16_t)buffer[5]) << 8) | buffer[4];		
-	i2cDevice.readReg(AK8963_I2C_ADDR, AK8963_ST2, 1, buffer);
-    LOG.info() << "Mag: " << *mx << " ,\t " << *my << " ,\t " << *mz << LOG.flush;
+	getMagnetometerReading(mx, my, mz);
 }
 /** Get raw 6-axis motion sensor readings (accel/gyro).
  * Retrieves all currently available motion sensor values.
@@ -1836,6 +1819,22 @@ int16_t MPU9250::getAccelerationZ() {
 int16_t MPU9250::getTemperature() {
     i2cDevice.readReg(devAddr, MPU9250_RA_TEMP_OUT_H, 2, buffer);
     return (((int16_t)buffer[0]) << 8) | buffer[1];
+}
+
+// MAG_OUT_* registers
+
+/** Get magnetometer reading.
+ * @param x 16-bit signed integer container for X-axis magnetometer reading
+ * @param y 16-bit signed integer container for Y-axis magnetometer reading
+ * @param z 16-bit signed integer container for Z-axis magnetometer reading
+ * @see AK8963_XOUT_L
+ */
+void MPU9250::getMagnetometerReading(int16_t* x, int16_t* y, int16_t* z) {
+	i2cDevice.readReg(AK8963_I2C_ADDR, AK8963_XOUT_L, 7, buffer); // Read the x-, y-, and z-axis calibration values
+    *x = ((int16_t)buffer[1] << 8) | buffer[0] ;     // Turn the MSB and LSB into a signed 16-bit value
+    *y = ((int16_t)buffer[3] << 8) | buffer[2] ;     // Data stored as little Endian
+    *z = ((int16_t)buffer[5] << 8) | buffer[4] ; 
+	i2cDevice.readReg(AK8963_I2C_ADDR, AK8963_ST2, 1, buffer); 
 }
 
 // GYRO_*OUT_* registers
@@ -2731,12 +2730,12 @@ void MPU9250::setDeviceID(uint8_t id) {
 
 
 
-void MPU9250::calibrateMagnetometer(float * dest1, float * dest2, uint16_t mMode, float mRes) 
+void MPU9250::calibrateMagnetometer(float *magBias, float *magScale, uint16_t mMode, float mRes, float *magCalibration) 
 {
   uint16_t ii = 0, sample_count = 0;
   int32_t mag_bias[3] = {0, 0, 0}, mag_scale[3] = {0, 0, 0};
   int16_t mag_max[3] = {-32767, -32767, -32767}, mag_min[3] = {32767, 32767, 32767}, mag_temp[3] = {0, 0, 0};
-  uint8_t rawData[7] = {0, 0, 0, 0, 0, 0, 0}, magCalibration[3] = {0, 0, 0};
+  uint8_t rawData[7] = {0, 0, 0, 0, 0, 0, 0};
 
   LOG.info() << "Mag Calibration for: 0x" << std::hex << devAddr << " Wave device in a figure eight until done!" << LOG.flush;
   HAL_Delay(2000);
@@ -2746,8 +2745,6 @@ void MPU9250::calibrateMagnetometer(float * dest1, float * dest2, uint16_t mMode
   if(mMode == 0x06) sample_count = 1500;  // at 100 Hz ODR, new mag data is available every 10 ms
   for(ii = 0; ii < sample_count; ii++) {
 	i2cDevice.readReg(AK8963_I2C_ADDR, AK8963_XOUT_L, 7, &rawData[0]); // Read the x-, y-, and z-axis calibration values
-    if(mMode == 0x02) HAL_Delay(125);  // at 8 Hz ODR, new mag data is available every 125 ms
-    if(mMode == 0x06) HAL_Delay(10);   // at 100 Hz ODR, new mag data is available every 10 ms   
     mag_temp[0] = ((int16_t)rawData[1] << 8) | rawData[0] ;     // Turn the MSB and LSB into a signed 16-bit value
     mag_temp[1] = ((int16_t)rawData[3] << 8) | rawData[2] ;     // Data stored as little Endian
     mag_temp[2] = ((int16_t)rawData[5] << 8) | rawData[4] ; 
@@ -2757,6 +2754,8 @@ void MPU9250::calibrateMagnetometer(float * dest1, float * dest2, uint16_t mMode
       if(mag_temp[jj] > mag_max[jj]) mag_max[jj] = mag_temp[jj];
       if(mag_temp[jj] < mag_min[jj]) mag_min[jj] = mag_temp[jj];
     }
+    if(mMode == 0x02) HAL_Delay(125);  // at 8 Hz ODR, new mag data is available every 125 ms
+    if(mMode == 0x06) HAL_Delay(10);   // at 100 Hz ODR, new mag data is available every 10 ms   
  }
 
     // Get hard iron correction
@@ -2764,14 +2763,9 @@ void MPU9250::calibrateMagnetometer(float * dest1, float * dest2, uint16_t mMode
     mag_bias[1]  = (mag_max[1] + mag_min[1])/2;  // get average y mag bias in counts
     mag_bias[2]  = (mag_max[2] + mag_min[2])/2;  // get average z mag bias in counts
 
-	i2cDevice.readReg(AK8963_I2C_ADDR, AK8963_ASAX, 3, &rawData[0]);// Read the x-, y-, and z-axis calibration values
-    magCalibration[0] =  (float)(rawData[0] - 128)/256.0f + 1.0f;        // Return x-axis sensitivity adjustment values, etc.
-    magCalibration[1] =  (float)(rawData[1] - 128)/256.0f + 1.0f;  
-    magCalibration[2] =  (float)(rawData[2] - 128)/256.0f + 1.0f; 
-
-    dest1[0] = (float) mag_bias[0]*mRes*magCalibration[0];  // save mag biases in G for main program
-    dest1[1] = (float) mag_bias[1]*mRes*magCalibration[1];   
-    dest1[2] = (float) mag_bias[2]*mRes*magCalibration[2];  
+    magBias[0] = (float) mag_bias[0]*mRes*magCalibration[0];  // save mag biases in G for main program
+    magBias[1] = (float) mag_bias[1]*mRes*magCalibration[1];   
+    magBias[2] = (float) mag_bias[2]*mRes*magCalibration[2];  
        
     // Get soft iron correction estimate
     mag_scale[0]  = (mag_max[0] - mag_min[0])/2;  // get average x axis max chord length in counts
@@ -2781,9 +2775,9 @@ void MPU9250::calibrateMagnetometer(float * dest1, float * dest2, uint16_t mMode
     float avg_rad = mag_scale[0] + mag_scale[1] + mag_scale[2];
     avg_rad /= 3.0;
 
-    dest2[0] = avg_rad/((float)mag_scale[0]);
-    dest2[1] = avg_rad/((float)mag_scale[1]);
-    dest2[2] = avg_rad/((float)mag_scale[2]);
+    magScale[0] = avg_rad/((float)mag_scale[0]);
+    magScale[1] = avg_rad/((float)mag_scale[1]);
+    magScale[2] = avg_rad/((float)mag_scale[2]);
   
    LOG.info() << "Mag Calibration done!" << LOG.flush;
 }

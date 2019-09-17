@@ -449,7 +449,7 @@ class MPU9250 {
         MPU9250(const MPU9250& other): devAddr(other.devAddr), i2cDevice(other.i2cDevice) {}
 
         void initialize();
-        void initAK8963(uint8_t scale, uint8_t rate, float *magCalibration);
+        void initAK8963(uint8_t scale, uint8_t rate);
         bool testConnection();
 
         // AUX_VDDIO register
@@ -629,6 +629,9 @@ class MPU9250 {
         int16_t getAccelerationY();
         int16_t getAccelerationZ();
 
+        // MAG_OUT_* registers
+        void getMagnetometerReading(int16_t* x, int16_t* y, int16_t* z);
+
         // TEMP_OUT_* registers
         int16_t getTemperature();
 
@@ -723,7 +726,7 @@ class MPU9250 {
         uint8_t getDeviceID();
         void setDeviceID(uint8_t id);
 
-        void calibrateMagnetometer(float * dest1, float * dest2, uint16_t mMode, float mRes);
+        void calibrateMagnetometer(float *magBias, float *magScale, uint16_t mMode, float mRes, float *magCalibration);
     private:
         uint8_t devAddr;
         uint8_t buffer[14];
