@@ -15,6 +15,7 @@ public:
     void getAngles(float *pitch, float *roll, float *yaw);
     void printAngles();
     void printQuaternions();
+    void calibrateMagnetometer();
 private:
     void calibrateGyro();
     void loadValues();
@@ -23,7 +24,9 @@ private:
 
     I2CDevice i2cDevice;
     MPU9250 mpu;
-    float aRes, gRes;
+    float aRes, gRes, mRes;
+    float magCalibration[3] = {0, 0, 0}, magScale[3] = {0.82, 1.03, 1.21}, magBias[3] = {133.44, 50.97, -19.49};
+    uint8_t mMode;
 
     int16_t aXRaw,aYRaw,aZRaw,gXRaw,gYRaw,gZRaw,mXRaw,mYRaw,mZRaw;
 

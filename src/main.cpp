@@ -7,6 +7,9 @@
 
 #include "logger.h"
 #include "imu.h"
+#include "eeprom.h"
+
+//__attribute__((__section__(".user_data"))) const uint32_t userConfig[64] = {0};
 
 /*----------------------------------------------------------------------------
  * SystemCoreClockConfigure: configure SystemCoreClock using HSI
@@ -55,12 +58,12 @@ void* __dso_handle;
 int main(void) {
 
     HAL_Init();
-    SystemCoreClockConfigure();                              // configure System Clock
+    SystemCoreClockConfigure();
     SystemCoreClockUpdate();
-    /*
-     * Turn on the GPIOA unit,
-     * -> see section 6.3.9 in the manual
-     */
+
+   // HAL_Flash_
+
+
     __GPIOA_CLK_ENABLE(); 
     __GPIOB_CLK_ENABLE(); 
     __GPIOC_CLK_ENABLE(); 
@@ -77,13 +80,17 @@ int main(void) {
     LOG.info() << "Falcon start up!" << LOG.flush;
     
     IMU imu = IMU(0x69);
+
+    if (false) {
+        HAL_Delay(100);
+        imu.calibrateMagnetometer();
+        HAL_Delay(100000000);
+    }
 	
     uint64_t tLast = HAL_GetTick();
     while(1) {
-
-        
         imu.update();
-        imu.printAngles();
+        //imu.printAngles();
         while(HAL_GetTick() - tLast < 50);
         tLast = HAL_GetTick();
     }

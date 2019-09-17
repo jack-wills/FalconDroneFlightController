@@ -6,9 +6,17 @@ IMU::IMU(uint8_t sensorAddress): i2cDevice(I2CDevice()), mpu(MPU9250(sensorAddre
     mpu.setFullScaleAccelRange(accelFullScale);
     uint8_t gyroFullScale = MPU9250_GYRO_FS_500;
     mpu.setFullScaleGyroRange(gyroFullScale);
+	mMode = AK8963_SAMP_100;
+	uint8_t mBitWith = AK8963_16_BIT;
+	mpu.initAK8963(mBitWith, mMode, magCalibration);
 
     aRes = ((float)(accelFullScale+1))/16384.0f;
     gRes = (((float)(gyroFullScale+1))/131.0f)*degToRad;
+	if (mBitWith == AK8963_16_BIT) {
+		mRes = 10.*4912./32760.0;
+	} else {
+    	mRes = 10.*4912./8190.; // Proper scale to return milliGauss 14bit
+	}
 
     calibrateGyro();
 }
@@ -19,6 +27,11 @@ IMU::IMU(const IMU& other): i2cDevice(other.i2cDevice), mpu(other.mpu) {
 
 IMU::~IMU() {
 
+}
+
+void IMU::calibrateMagnetometer() {
+	mpu.calibrateMagnetometer(magBias, magScale, mMode, mRes);
+	LOG.info() << "magBias = {" << magBias[0] << ", " << magBias[1] << ", " << magBias[2] << "} magScale = {" << magScale[0] << ", " << magScale[1] << ", " << magScale[2] << "}" << LOG.flush;
 }
 
 void IMU::calibrateGyro() {
@@ -47,6 +60,9 @@ void IMU::loadValues() {
     gY = (float)(gYRaw-gYOffset)*gRes;  
     gZ = (float)(gZRaw-gZOffset)*gRes;
 
+	mX = ((float)mXRaw*mRes*magCalibration[0] - magBias[0])*magScale[0];
+	mY = ((float)mXRaw*mRes*magCalibration[1] - magBias[1])*magScale[1];
+	mZ = ((float)mXRaw*mRes*magCalibration[2] - magBias[2])*magScale[2];
 }
 
 void IMU::getAngles(float *pitch, float *roll, float *yaw) {
