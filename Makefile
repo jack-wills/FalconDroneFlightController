@@ -8,9 +8,15 @@ NAME      = hello_world
 SRCS      = $(wildcard src/STM32F401XE/*.c*)
 SRCS  	 += $(wildcard src/STM32F401XE_HAL/*.c*)
 SRCS  	 += $(wildcard src/*.c*)
+SRCS  	 += $(wildcard src/FreeRTOS/*.c*)
+SRCS  	 += $(wildcard src/FreeRTOS/portable/GCC/ARM_CM4F/*.c*)
+SRCS  	 += $(wildcard src/FreeRTOS/portable/MemMang/heap_2.c)
 
 INCDIRS   = src/STM32F401XE
 INCDIRS   += src/STM32F401XE_HAL
+INCDIRS   += src
+INCDIRS   += src/FreeRTOS/include
+INCDIRS   += src/FreeRTOS/portable/GCC/ARM_CM4F
 
 LSCRIPT   = src/STM32F401XE/gcc_linker.ld
 
@@ -22,8 +28,8 @@ CFLAGS    = -ffunction-sections
 CFLAGS   += -mlittle-endian
 CFLAGS   += -mthumb
 CFLAGS   += -mcpu=cortex-m4
-#CFLAGS   += -mfloat-abi=hard
-#CFLAGS   += -mfpu=fpv4-sp-d16
+CFLAGS   += -mfloat-abi=softfp
+CFLAGS   += -mfpu=fpv4-sp-d16
 CFLAGS   += -std=gnu11
 CFLAGS   += -ggdb
 
@@ -31,15 +37,15 @@ ifdef DEBUG
     CFLAGS   += -Og
     CFLAGS   += -g3
 else
-    CFLAGS   += -Os -flto
+    CFLAGS   += -Os
 endif
 
 CXXFLAGS  = -ffunction-sections
 CXXFLAGS += -mlittle-endian
 CXXFLAGS += -mthumb
 CXXFLAGS += -mcpu=cortex-m4
-#CXXFLAGS += -mfloat-abi=hard
-#CXXFLAGS += -mfpu=fpv4-sp-d16
+CXXFLAGS += -mfloat-abi=softfp
+CXXFLAGS += -mfpu=fpv4-sp-d16
 CXXFLAGS += -ggdb
 
 LFLAGS    = --specs=nano.specs 
@@ -113,11 +119,11 @@ $(BUILDDIR)%.o: %.cpp
 
 # assembler
 $(BUILDDIR)%.o: %.s
-	$(CC) -c -x assembler-with-cpp -o $@ $(INCLUDE) $(DEFINES) $(CXXFLAGS) $(WFLAGS) $<
+	$(CC) -c -x assembler-with-cpp -o $@ $(INCLUDE) $(DEFINES) $(CFLAGS) $(WFLAGS) $<
 
 # linker
 $(BUILDDIR)%.elf: $(OBJS)
-	$(CXX) -o $@ $^ $(CFLAGS) $(LFLAGS) -Wl,-Map=$(addsuffix .map, $(basename $@))
+	$(CXX) -o $@ $^ $(CXXFLAGS) $(LFLAGS) -Wl,-Map=$(addsuffix .map, $(basename $@))
 
 %.bin: %.elf
 	$(OBJCOPY) -O binary -S $< $@

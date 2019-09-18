@@ -139,10 +139,6 @@ bool I2CDevice::write(uint8_t addr, uint8_t* data, int dataSize) {
         }
         if(result == HAL_BUSY) {
             LOG.error() << "I2C request failed due to HAL_BUSY" << LOG.flush;
-            /*I2C_ClearBusyFlagErratum();
-            while(HAL_I2C_Master_Transmit(&I2CHandle, addr<<1, data, dataSize, 10000) != HAL_OK) {
-                HAL_Delay(100);
-            }*/
         }
         if(result == HAL_TIMEOUT) {
             LOG.error() << "I2C request failed due to HAL_TIMEOUT" << LOG.flush;

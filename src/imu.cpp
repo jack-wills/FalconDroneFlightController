@@ -30,6 +30,8 @@ IMU::IMU(uint8_t sensorAddress): i2cDevice(I2CDevice()), mpu(MPU9250(sensorAddre
         tLast = HAL_GetTick();
     }
 	beta = 0.01f;
+
+    xTaskCreate(this->startTaskImpl, "IMU", 1024, this, tskIDLE_PRIORITY, &taskHandle);
 }
 
 IMU::IMU(const IMU& other): i2cDevice(other.i2cDevice), mpu(other.mpu) {
@@ -40,12 +42,35 @@ IMU::~IMU() {
 
 }
 
+void IMU::startTaskImpl(void* _this){
+    ((IMU*)_this)->task();
+}
+
+void IMU::task() {
+
+    if (false) {
+        vTaskDelay(100);
+        calibrateMagnetometer();
+        vTaskDelay(100000000);
+    }
+
+ 	TickType_t xLastWakeTime;
+ 	const TickType_t xFrequency = 50;
+
+	xLastWakeTime = xTaskGetTickCount();
+	while (1) {
+        update();
+        printAngles();
+        vTaskDelayUntil( &xLastWakeTime, xFrequency );
+	}
+}
+
 void IMU::calibrateMagnetometer() {
 	for (int i = 0; i < 1000; i++) {
 		mpu.getMagnetometerReading(&mXRaw, &mYRaw, &mZRaw);
 		FCComm("MAGCAL") << (float)mXRaw*mRes << " " << (float)mYRaw*mRes << " " << (float)mZRaw*mRes;
-		if(mMode == AK8963_SAMP_8)   HAL_Delay(125);  // at 8 Hz ODR, new mag data is available every 125 ms
-		if(mMode == AK8963_SAMP_100) HAL_Delay(10);   // at 100 Hz ODR, new mag data is available every 10 ms   
+		if(mMode == AK8963_SAMP_8)   vTaskDelay(125);  // at 8 Hz ODR, new mag data is available every 125 ms
+		if(mMode == AK8963_SAMP_100) vTaskDelay(10);   // at 100 Hz ODR, new mag data is available every 10 ms   
 	}
 }
 
@@ -56,7 +81,7 @@ void IMU::calibrateGyro() {
         gXOffset += gXRaw;
         gYOffset += gYRaw;
         gZOffset += gZRaw;
-        HAL_Delay(3);
+        vTaskDelay(3);
     }
     LOG.info() << "Calibrations Finished" << LOG.flush;
     gXOffset /= 500;

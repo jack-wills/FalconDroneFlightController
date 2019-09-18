@@ -33,6 +33,9 @@ THE SOFTWARE.
 
 #include "mpu9250.h"
 
+#include "FreeRTOS.h"
+#include "task.h"
+
 /** Power on and prepare for general usage.
  * This will activate the device and take it out of sleep mode (which must be done
  * after start-up). This function also sets both the accelerometer and the gyroscope
@@ -46,21 +49,20 @@ void MPU9250::initialize() {
 }
 
 void MPU9250::initAK8963(uint8_t scale, uint8_t rate) {
-    uint8_t rawData[3];  // x/y/z gyro calibration data stored here
 	i2cDevice.writeByte(devAddr, MPU9250_RA_INT_PIN_CFG, 0x02); //set i2c bypass enable pin to true to access magnetometer
-	HAL_Delay(10);
-    i2cDevice.writeByte(AK8963_I2C_ADDR, AK8963_CNTL2, 0x01);                       // Reset AK8963
-	HAL_Delay(10);
+	vTaskDelay(10);
+    i2cDevice.writeByte(AK8963_I2C_ADDR, AK8963_CNTL2, 0x01); // Reset AK8963
+	vTaskDelay(10);
 	i2cDevice.writeByte(AK8963_I2C_ADDR, AK8963_CNTL1, 0x01); //enable the magnetometer
-	HAL_Delay(10);
+	vTaskDelay(10);
     i2cDevice.writeByte(AK8963_I2C_ADDR, AK8963_CNTL1, 0x00);
-	HAL_Delay(10);
+	vTaskDelay(10);
     
     // Configure the magnetometer for continuous read and highest resolution
     // set Mscale bit 4 to 1 (0) to enable 16 (14) bit resolution in CNTL register,
     // and enable continuous mode data acquisition Mmode (bits [3:0]), 0010 for 8 Hz and 0110 for 100 Hz sample rates
     i2cDevice.writeByte(AK8963_I2C_ADDR, AK8963_CNTL, scale | rate); // Set magnetometer data resolution and sample ODR
-    HAL_Delay(10);
+    vTaskDelay(10);
 }
 
 /** Verify the I2C connection.
@@ -2738,7 +2740,7 @@ void MPU9250::calibrateMagnetometer(float *magBias, float *magScale, uint16_t mM
   uint8_t rawData[7] = {0, 0, 0, 0, 0, 0, 0};
 
   LOG.info() << "Mag Calibration for: 0x" << std::hex << devAddr << " Wave device in a figure eight until done!" << LOG.flush;
-  HAL_Delay(2000);
+  vTaskDelay(2000);
   
 // shoot for ~fifteen seconds of mag data
   if(mMode == 0x02) sample_count = 128;  // at 8 Hz ODR, new mag data is available every 125 ms
@@ -2754,8 +2756,8 @@ void MPU9250::calibrateMagnetometer(float *magBias, float *magScale, uint16_t mM
       if(mag_temp[jj] > mag_max[jj]) mag_max[jj] = mag_temp[jj];
       if(mag_temp[jj] < mag_min[jj]) mag_min[jj] = mag_temp[jj];
     }
-    if(mMode == 0x02) HAL_Delay(125);  // at 8 Hz ODR, new mag data is available every 125 ms
-    if(mMode == 0x06) HAL_Delay(10);   // at 100 Hz ODR, new mag data is available every 10 ms   
+    if(mMode == 0x02) vTaskDelay(125);  // at 8 Hz ODR, new mag data is available every 125 ms
+    if(mMode == 0x06) vTaskDelay(10);   // at 100 Hz ODR, new mag data is available every 10 ms   
  }
 
     // Get hard iron correction

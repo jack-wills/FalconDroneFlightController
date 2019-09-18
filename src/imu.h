@@ -2,6 +2,9 @@
 #include "mpu9250.h"
 #include "logger.h"
 
+#include "FreeRTOS.h"
+#include "task.h"
+
 #define PI 3.141592f
 
 class IMU
@@ -10,6 +13,9 @@ public:
 	IMU(uint8_t sensorAddress);
     IMU(const IMU& other);
 	~IMU();
+private:
+    static void startTaskImpl(void* _this);
+    void task();
 	void update6Dof();
 	void update9Dof();
 	void update();
@@ -17,7 +23,6 @@ public:
     void printAngles();
     void printQuaternions();
     void calibrateMagnetometer();
-private:
     void calibrateGyro();
     void loadValues();
     float invSqrt(float x);
@@ -48,5 +53,7 @@ private:
     float radToDeg = 180.0f/PI;
 
     Logger LOG = Logger("IMU");
+
+    TaskHandle_t taskHandle;
 };
 
