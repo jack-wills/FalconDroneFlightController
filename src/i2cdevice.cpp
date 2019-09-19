@@ -1,6 +1,14 @@
 #include "i2cdevice.h"
 
+#include "FreeRTOS.h"
+#include "semphr.h"
+
+SemaphoreHandle_t i2cMutex = 0;
+
 I2CDevice::I2CDevice() {
+    if (i2cMutex == 0) {
+        i2cMutex = xSemaphoreCreateMutex();
+    }
     __I2C1_CLK_ENABLE(); 
 
     GPIO_InitStruct.Pin = GPIO_PIN_8|GPIO_PIN_9;
@@ -129,8 +137,14 @@ void I2CDevice::I2C_ClearBusyFlagErratum() {
     }
 }
 
-bool I2CDevice::write(uint8_t addr, uint8_t* data, int dataSize) {
-    HAL_StatusTypeDef result = HAL_I2C_Master_Transmit(&I2CHandle, addr<<1, data, dataSize, 10000);
+bool I2CDevice::write(uint8_t addr, uint8_t* data, int dataSize, bool bypassSem = false) {
+    HAL_StatusTypeDef result;
+    if (bypassSem || xSemaphoreTake(i2cMutex, portMAX_DELAY)) {
+        result = HAL_I2C_Master_Transmit(&I2CHandle, addr<<1, data, dataSize, 10000);
+        xSemaphoreGive(i2cMutex);
+    } else {
+        return false;
+    }
     if(result == HAL_OK) {
         return true;
     } else {
@@ -145,10 +159,6 @@ bool I2CDevice::write(uint8_t addr, uint8_t* data, int dataSize) {
         }
         return false;
     }
-}
-
-bool I2CDevice::write(uint8_t addr, uint8_t data) {
-    return write(addr, &data, 1);
 }
 
 bool I2CDevice::writeReg(uint8_t addr, uint8_t reg, uint8_t* data, int dataSize) {
@@ -199,8 +209,14 @@ bool I2CDevice::writeBits(uint8_t addr, uint8_t reg, uint8_t bitStart, uint8_t l
     }
 }
 
-bool I2CDevice::read(uint8_t addr, uint8_t* rXData, int dataSize) { 
-    HAL_StatusTypeDef result = HAL_I2C_Master_Receive(&I2CHandle, addr<<1, rXData, dataSize, 10000);  
+bool I2CDevice::read(uint8_t addr, uint8_t* rXData, int dataSize, bool bypassSem = false) { 
+    HAL_StatusTypeDef result;
+    if (bypassSem || xSemaphoreTake(i2cMutex, portMAX_DELAY)) {
+        result = HAL_I2C_Master_Receive(&I2CHandle, addr<<1, rXData, dataSize, 10000);
+        xSemaphoreGive(i2cMutex);
+    } else {
+        return false;
+    }
     if(result == HAL_OK) {
         return true;
     } else {
@@ -218,8 +234,14 @@ bool I2CDevice::read(uint8_t addr, uint8_t* rXData, int dataSize) {
 }
 
 bool I2CDevice::readReg(uint8_t addr, uint8_t reg, uint8_t* rXData, int dataSize) { 
-    bool writeResult = write(addr, reg);
-    bool readResult = read(addr, rXData, dataSize);
+    bool writeResult, readResult;
+    if (xSemaphoreTake(i2cMutex, portMAX_DELAY)) {
+        writeResult = write(addr, &reg, 1, true);
+        readResult = read(addr, rXData, dataSize, true);
+        xSemaphoreGive(i2cMutex);
+    } else {
+        return false;
+    }
     return writeResult && readResult;
 }
 

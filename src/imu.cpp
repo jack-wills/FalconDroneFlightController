@@ -6,7 +6,7 @@ IMU::IMU(uint8_t sensorAddress): i2cDevice(I2CDevice()), mpu(MPU9250(sensorAddre
     mpu.initialize();
     uint8_t accelFullScale = MPU9250_ACCEL_FS_8;
     mpu.setFullScaleAccelRange(accelFullScale);
-    uint8_t gyroFullScale = MPU9250_GYRO_FS_500;
+    uint8_t gyroFullScale = MPU9250_GYRO_FS_2000;
     mpu.setFullScaleGyroRange(gyroFullScale);
 	mMode = AK8963_SAMP_100;
 	uint8_t mBitWith = AK8963_16_BIT;
@@ -29,9 +29,9 @@ IMU::IMU(uint8_t sensorAddress): i2cDevice(I2CDevice()), mpu(MPU9250(sensorAddre
         while(HAL_GetTick() - tLast < samplePeriod);
         tLast = HAL_GetTick();
     }
-	beta = 0.01f;
+	beta = 0.1f;
 
-    xTaskCreate(this->startTaskImpl, "IMU", 1024, this, tskIDLE_PRIORITY, &taskHandle);
+    xTaskCreate(this->startTaskImpl, "IMU", 1024, this, configMAX_PRIORITIES-1, &taskHandle);
 }
 
 IMU::IMU(const IMU& other): i2cDevice(other.i2cDevice), mpu(other.mpu) {

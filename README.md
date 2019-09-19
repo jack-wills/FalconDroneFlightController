@@ -14,7 +14,7 @@ The Falcon drone is a project aimed to design an autonomous flight controller fr
 
 Change logger and I2c to interrupt based
 Create class for MPU sensors (Done)
-Setup FreeRTOS
+Setup FreeRTOS (Done)
 Read Magnetometer (Done)
 Calibrate magnetometer  (Done)
 Use MPU data to calculate heading (Done)

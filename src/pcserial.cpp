@@ -1,6 +1,14 @@
 #include "pcserial.h"
 
+#include "FreeRTOS.h"
+#include "semphr.h"
+
+SemaphoreHandle_t uartMutex = 0;
+
 PCSerial::PCSerial(int baudRate) {
+    if (uartMutex == 0) {
+        uartMutex = xSemaphoreCreateMutex();
+    }
     __GPIOA_CLK_ENABLE(); 
     __USART2_CLK_ENABLE();
     GPIO_InitStruct.Pin = GPIO_PIN_2|GPIO_PIN_3;
@@ -29,7 +37,10 @@ PCSerial::~PCSerial() {
 
 void PCSerial::print(std::string string) {
     const char *buf = string.c_str();
-    HAL_UART_Transmit(&UARTHandle, (uint8_t*)buf, strlen(buf), HAL_MAX_DELAY);
+    if (xSemaphoreTake(uartMutex, portMAX_DELAY)) {
+        HAL_UART_Transmit(&UARTHandle, (uint8_t*)buf, strlen(buf), HAL_MAX_DELAY);
+        xSemaphoreGive(uartMutex);
+    }
 }
 
 void PCSerial::println(std::string string) {
