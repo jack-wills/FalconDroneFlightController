@@ -46,7 +46,8 @@ private:
     float aX,aY,aZ,gX,gY,gZ,mX,mY,mZ;
 
     float q0 = 1.0f, q1 = 0.0f, q2 = 0.0f, q3 = 0.0f;
-    float invSampleFreq = 1.0f/200.0f;
+    float samplePeriod = 10.0f;
+    float samplePeriodMadgwick = samplePeriod/10000.0f; //Convert to seconds and divide by 10 since we do 10 filter updates per sample
     float beta = 0.1f;
 
     float degToRad = PI/180.0f;

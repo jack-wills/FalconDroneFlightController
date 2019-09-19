@@ -26,7 +26,7 @@ IMU::IMU(uint8_t sensorAddress): i2cDevice(I2CDevice()), mpu(MPU9250(sensorAddre
     uint64_t tLast = HAL_GetTick();
     for(int i = 0; i < 40; i++) {
         update();
-        while(HAL_GetTick() - tLast < 50);
+        while(HAL_GetTick() - tLast < samplePeriod);
         tLast = HAL_GetTick();
     }
 	beta = 0.01f;
@@ -55,7 +55,7 @@ void IMU::task() {
     }
 
  	TickType_t xLastWakeTime;
- 	const TickType_t xFrequency = 50;
+ 	const TickType_t xFrequency = samplePeriod;
 
 	xLastWakeTime = xTaskGetTickCount();
 	while (1) {
@@ -182,10 +182,10 @@ void IMU::update6Dof() {
 	}
 
 	// Integrate rate of change of quaternion to yield quaternion
-	q0 += qDot1 * invSampleFreq;
-	q1 += qDot2 * invSampleFreq;
-	q2 += qDot3 * invSampleFreq;
-	q3 += qDot4 * invSampleFreq;
+	q0 += qDot1 * samplePeriodMadgwick;
+	q1 += qDot2 * samplePeriodMadgwick;
+	q2 += qDot3 * samplePeriodMadgwick;
+	q3 += qDot4 * samplePeriodMadgwick;
 
 	// Normalise quaternion
 	recipNorm = invSqrt(q0 * q0 + q1 * q1 + q2 * q2 + q3 * q3);
@@ -278,10 +278,10 @@ void IMU::update9Dof() {
 	}
 
 	// Integrate rate of change of quaternion to yield quaternion
-	q0 += qDot1 * invSampleFreq;
-	q1 += qDot2 * invSampleFreq;
-	q2 += qDot3 * invSampleFreq;
-	q3 += qDot4 * invSampleFreq;
+	q0 += qDot1 * samplePeriodMadgwick;
+	q1 += qDot2 * samplePeriodMadgwick;
+	q2 += qDot3 * samplePeriodMadgwick;
+	q3 += qDot4 * samplePeriodMadgwick;
 
 	// Normalise quaternion
 	recipNorm = invSqrt(q0 * q0 + q1 * q1 + q2 * q2 + q3 * q3);

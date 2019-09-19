@@ -4,14 +4,18 @@
 
 #include "math.h"
 
+#include "FreeRTOS.h"
+#include "queue.h"
+
 #include "pcserial.h"
+#include "logmanager.h"
 
 class Logger
 {
 public:
 	Logger(std::string className) : pcSerial(PCSerial(115200)) {
         std::string nameTemp = "[" + className + "] ";
-        for (int i = strlen(nameTemp.c_str()); i < 16; i++) {
+        for (int i = strlen(nameTemp.c_str()); i < 10; i++) {
             nameTemp = nameTemp + " ";
         }
         this->className = nameTemp;
@@ -75,8 +79,10 @@ private:
         ss << "(" << std::setw(3) << std::setfill('0') << min 
            << ":" << std::setw(2) << std::setfill('0') << sec 
            << "." << std::setw(3) << std::setfill('0') << milli 
-           << ") " << className << logLevel << ": " << msg;
-        pcSerial.println(ss.str());
+           << ")" << className << logLevel << ": " << msg;
+        char queueBuffer[100];
+        sprintf(queueBuffer, ss.str().c_str());
+        xQueueSend(loggerQueue, (void*)queueBuffer, 0);
     }
     // Converts a floating point number to string. 
     std::string ftoa(float n, int afterpoint) { 
