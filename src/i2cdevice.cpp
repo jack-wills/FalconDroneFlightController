@@ -149,13 +149,13 @@ bool I2CDevice::write(uint8_t addr, uint8_t* data, int dataSize, bool bypassSem 
         return true;
     } else {
         if(result == HAL_ERROR) {
-            LOG.error() << "I2C request failed due to HAL_ERROR" << LOG.flush;
+            LOG.error() << "I2C write request failed due to HAL_ERROR" << LOG.flush;
         }
         if(result == HAL_BUSY) {
-            LOG.error() << "I2C request failed due to HAL_BUSY" << LOG.flush;
+            LOG.error() << "I2C write request failed due to HAL_BUSY" << LOG.flush;
         }
         if(result == HAL_TIMEOUT) {
-            LOG.error() << "I2C request failed due to HAL_TIMEOUT" << LOG.flush;
+            LOG.error() << "I2C write request failed due to HAL_TIMEOUT" << LOG.flush;
         }
         return false;
     }
@@ -165,7 +165,9 @@ bool I2CDevice::writeReg(uint8_t addr, uint8_t reg, uint8_t* data, int dataSize)
     uint8_t* data_ = (uint8_t*)malloc(sizeof(uint8_t) * (dataSize + 2));
     data_[0] = reg;
     memmove(data_+1, data, dataSize);
-    return write(addr, data_, dataSize+1);
+    bool result = write(addr, data_, dataSize+1);
+    free(data_);
+    return result;
 }
 
 bool I2CDevice::writeReg(uint8_t addr, uint8_t reg, int dataSize, uint8_t* data) {
@@ -189,13 +191,6 @@ bool I2CDevice::writeBit(uint8_t addr, uint8_t reg, uint8_t bitNum, uint8_t data
 }
 
 bool I2CDevice::writeBits(uint8_t addr, uint8_t reg, uint8_t bitStart, uint8_t length, uint8_t data) {
-    //      010 value to write
-    // 76543210 bit numbers
-    //    xxx   args: bitStart=4, length=3
-    // 00011100 mask byte
-    // 10101111 original value (sample)
-    // 10100011 original & ~mask
-    // 10101011 masked | value
     uint8_t b;
     if (readByte(addr, reg, &b) != 0) {
         uint8_t mask = ((1 << length) - 1) << (bitStart - length + 1);
@@ -221,13 +216,13 @@ bool I2CDevice::read(uint8_t addr, uint8_t* rXData, int dataSize, bool bypassSem
         return true;
     } else {
         if(result == HAL_ERROR) {
-            LOG.error() << "I2C request failed due to HAL_ERROR" << LOG.flush;
+            LOG.error() << "I2C read request failed due to HAL_ERROR" << LOG.flush;
         }
         if(result == HAL_BUSY) {
-            LOG.error() << "I2C request failed due to HAL_BUSY" << LOG.flush;
+            LOG.error() << "I2C read request failed due to HAL_BUSY" << LOG.flush;
         }
         if(result == HAL_TIMEOUT) {
-            LOG.error() << "I2C request failed due to HAL_TIMEOUT" << LOG.flush;
+            LOG.error() << "I2C read request failed due to HAL_TIMEOUT" << LOG.flush;
         }
         return false;
     }

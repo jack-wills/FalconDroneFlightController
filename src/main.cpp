@@ -7,6 +7,7 @@
 
 #include "logger.h"
 #include "imu.h"
+#include "bmp180.h"
 #include "eeprom.h"
 #include "fccomm.h"
 #include "logmanager.h"
@@ -76,6 +77,8 @@ void mainTask(void* p) {
     LOG.info() << "Falcon start up!" << LOG.flush;
     
     IMU imu = IMU(0x69);
+
+    BMP180 bmp = BMP180();
 
     vTaskDelete(NULL);
 }

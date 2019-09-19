@@ -6,7 +6,7 @@ IMU::IMU(uint8_t sensorAddress): i2cDevice(I2CDevice()), mpu(MPU9250(sensorAddre
     mpu.initialize();
     uint8_t accelFullScale = MPU9250_ACCEL_FS_8;
     mpu.setFullScaleAccelRange(accelFullScale);
-    uint8_t gyroFullScale = MPU9250_GYRO_FS_2000;
+    uint8_t gyroFullScale = MPU9250_GYRO_FS_1000;
     mpu.setFullScaleGyroRange(gyroFullScale);
 	mMode = AK8963_SAMP_100;
 	uint8_t mBitWith = AK8963_16_BIT;
