@@ -8,9 +8,8 @@
 #include "logger.h"
 #include "imu.h"
 #include "bmp180.h"
-#include "eeprom.h"
-#include "fccomm.h"
 #include "logmanager.h"
+#include "motorcontroller.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -54,7 +53,7 @@ void SystemCoreClockConfigure(void) {
 
 void* __dso_handle;
 
-#define STACK_SIZE 1024
+#define STACK_SIZE 2048
 
 StackType_t mainTaskStack[STACK_SIZE];
 StaticTask_t mainTaskBuffer;
@@ -65,20 +64,22 @@ void mainTask(void* p) {
 
     GPIO_InitTypeDef GPIO_InitStruct; 
 
-    GPIO_InitStruct.Pin = GPIO_PIN_5;
+    /*GPIO_InitStruct.Pin = GPIO_PIN_5;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP; // digital Input
     GPIO_InitStruct.Pull = GPIO_NOPULL; 
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET);*/
 
     logManager = LogManager();
 
     Logger LOG = Logger("main");
     LOG.info() << "Falcon start up!" << LOG.flush;
     
-    IMU imu = IMU(0x69);
+    IMU imu = IMU(0x68);
 
     BMP180 bmp = BMP180();
+
+    MotorController motorController = MotorController(imu);
 
     vTaskDelete(NULL);
 }

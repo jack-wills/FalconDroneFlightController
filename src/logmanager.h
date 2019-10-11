@@ -1,6 +1,4 @@
-#ifndef __LOGMANAGER_H
-#define __LOGMANAGER_H
-
+#pragma once
 #include "FreeRTOS.h"
 #include "queue.h"
 
@@ -22,5 +20,3 @@ private:
 
     TaskHandle_t taskHandle;
 };
-
-#endif /* LOGMANAGER */

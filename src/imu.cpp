@@ -60,7 +60,7 @@ void IMU::task() {
 	xLastWakeTime = xTaskGetTickCount();
 	while (1) {
         update();
-        printAngles();
+        //printAngles();
         vTaskDelayUntil( &xLastWakeTime, xFrequency );
 	}
 }
