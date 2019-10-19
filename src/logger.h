@@ -13,7 +13,7 @@
 class Logger
 {
 public:
-	Logger(std::string className) : pcSerial(PCSerial(115200)) {
+	Logger(std::string className) {
         std::string nameTemp = "[" + className + "] ";
         for (int i = strlen(nameTemp.c_str()); i < 10; i++) {
             nameTemp = nameTemp + " ";
@@ -66,7 +66,6 @@ public:
 
     const char* flush = "\n"; 
 private:
-    PCSerial pcSerial; 
     std::string className;
     std::string logLevel;
     std::stringstream logStream;

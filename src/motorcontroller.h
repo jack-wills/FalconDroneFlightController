@@ -4,7 +4,6 @@
 
 #include "logger.h"
 #include "imu.h"
-#include "adc.h"
 
 class MotorController
 {
@@ -18,7 +17,6 @@ private:
     void task();
 
     IMU imu;
-    ADCController adc;
 
     GPIO_InitTypeDef GPIO_InitStruct;
     TIM_HandleTypeDef PWM1Handle;

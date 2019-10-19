@@ -10,6 +10,7 @@
 #include "bmp180.h"
 #include "logmanager.h"
 #include "motorcontroller.h"
+#include "pcserialreciever.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -74,6 +75,8 @@ void mainTask(void* p) {
 
     Logger LOG = Logger("main");
     LOG.info() << "Falcon start up!" << LOG.flush;
+
+    PCSerialReciever serialReciever = PCSerialReciever();
     
     IMU imu = IMU(0x68);
 

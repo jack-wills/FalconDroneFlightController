@@ -14,6 +14,5 @@ public:
 	void println(std::string string);
 private:
     GPIO_InitTypeDef GPIO_InitStruct; 
-	UART_HandleTypeDef UARTHandle;
 };
 

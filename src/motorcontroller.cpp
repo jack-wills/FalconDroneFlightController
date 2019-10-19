@@ -3,7 +3,7 @@
 #define TIM2_PSC_SET 	16
 #define TIM2_ARR_SET 	19999
 
-MotorController::MotorController(IMU &imu) : imu(imu), adc(ADCController()) {
+MotorController::MotorController(IMU &imu) : imu(imu) {
     __HAL_RCC_TIM2_CLK_ENABLE();
     __HAL_RCC_TIM3_CLK_ENABLE();
 
