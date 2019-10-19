@@ -11,10 +11,13 @@ public:
 	MotorController(IMU &imu);
 	~MotorController();
     MotorController(const MotorController& other);
+    void setThrottle(uint16_t throttle);
     
 private:
     static void startTaskImpl(void* _this);
     void task();
+
+    uint16_t throttle = 0;
 
     IMU imu;
 

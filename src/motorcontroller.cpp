@@ -126,6 +126,13 @@ MotorController::MotorController(const MotorController& other): imu(other.imu) {
     GPIO_InitStruct = other.GPIO_InitStruct;
 }
 
+void MotorController::setThrottle(uint16_t throttle) {
+    if (throttle > 100) {
+        this->throttle = 100;
+    } else {
+        this->throttle = throttle;
+    }
+}
 
 void MotorController::startTaskImpl(void* _this) {
     ((MotorController*)_this)->task();
@@ -143,7 +150,7 @@ void MotorController::task() {
         //imu.getAngles(&pitch, &roll, &yaw);
         
         PWM1Handle.Instance->CCR1 = increment;   // D13
-        PWM1Handle.Instance->CCR2 = 100-increment;   // A1
+        PWM1Handle.Instance->CCR2 = throttle;   // A1
         PWM2Handle.Instance->CCR1 = increment;   // D5
         PWM2Handle.Instance->CCR2 = 100-increment;   // D9
         increment++;  // increment in 10 steps or by 10% for the duty cycle

@@ -76,13 +76,13 @@ void mainTask(void* p) {
     Logger LOG = Logger("main");
     LOG.info() << "Falcon start up!" << LOG.flush;
 
-    PCSerialReciever serialReciever = PCSerialReciever();
-    
     IMU imu = IMU(0x68);
 
     BMP180 bmp = BMP180();
 
     MotorController motorController = MotorController(imu);
+
+    PCSerialReciever serialReciever = PCSerialReciever(motorController);
 
     vTaskDelete(NULL);
 }

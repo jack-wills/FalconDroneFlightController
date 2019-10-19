@@ -9,16 +9,19 @@
 #include "task.h"
 
 #include "logger.h"
+#include "motorcontroller.h"
 
 class PCSerialReciever
 {
 public:
-	PCSerialReciever();
+	PCSerialReciever(MotorController& motorController);
 	~PCSerialReciever();
 	PCSerialReciever(const PCSerialReciever& other);
 private:
     static void startTaskImpl(void* _this);
     void task();
+
+	MotorController *motorController;
 
     Logger LOG = Logger("SerialRX");
 

@@ -4,7 +4,8 @@
 extern uint8_t UART_Buffer[UART_BUFFER_SIZE];
 extern bool dmaDataAvailable;
 
-PCSerialReciever::PCSerialReciever() {
+PCSerialReciever::PCSerialReciever(MotorController& motorController) {
+    this->motorController = &motorController;
     xTaskCreate(this->startTaskImpl, "SerialRX", 1024, this, configMAX_PRIORITIES-1, &taskHandle);
 }
 
@@ -12,7 +13,8 @@ PCSerialReciever::~PCSerialReciever() {
 
 }
 
-PCSerialReciever::PCSerialReciever(const PCSerialReciever& other) {
+PCSerialReciever::PCSerialReciever(const PCSerialReciever& other): motorController(other.motorController) {
+
 }
 
 void PCSerialReciever::startTaskImpl(void* _this) {
@@ -45,8 +47,21 @@ void PCSerialReciever::task() {
                 s = std::string(UART_Buffer + start, UART_Buffer + UART_BUFFER_SIZE);
                 s.append(std::string(UART_Buffer, UART_Buffer + end));
             }
-            LOG.info() << s << LOG.flush;
             start = end + 1;
+            if (s.find(" ") != std::string::npos) {
+                std::string command = s.substr(0, s.find(" "));
+                std::string value = s.substr(s.find(" "), s.length());
+                if (!command.compare("THROTTLE")) {
+                    motorController->setThrottle(std::stoul(value,nullptr,0));
+                } else if (!command.compare("TEST")) {
+                    LOG.info() << value << LOG.flush;
+                } else {
+                    LOG.error() << "Invalid command recieved from PC" << LOG.flush;
+                }
+            } else {
+                LOG.error() << "Invalid command recieved from PC" << LOG.flush;
+            }
+            
         }
         vTaskDelayUntil( &xLastWakeTime, xFrequency );
 	}
