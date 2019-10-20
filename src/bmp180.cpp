@@ -40,7 +40,7 @@ void BMP180::task() {
       correctTemperature();
       correctPressure();
       getAltitude();
-      LOG.info() << "Altitude = " << altitude << " Temp = " << (float)temp << " Pressure = " << pressure << LOG.flush;
+      //LOG.info() << "Altitude = " << altitude << " Temp = " << (float)temp << " Pressure = " << pressure << LOG.flush;
       vTaskDelayUntil( &xLastWakeTime, xFrequency );
 	}
 }

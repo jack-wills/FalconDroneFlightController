@@ -2,6 +2,9 @@
 
 #include "FreeRTOS.h"
 #include "semphr.h"
+#include "queue.h"
+
+QueueHandle_t serialRXQueue = 0;
 
 SemaphoreHandle_t uartMutex = 0;
 
@@ -10,15 +13,6 @@ DMA_HandleTypeDef DMAHandle;
 
 #define DMA_RX_BUFFER_SIZE          64
 uint8_t DMA_RX_Buffer[DMA_RX_BUFFER_SIZE];
-
-#define UART_BUFFER_SIZE            256
-uint8_t UART_Buffer[UART_BUFFER_SIZE];
-
-size_t Write;
-size_t len, tocopy;
-uint8_t* ptr;
-
-bool dmaDataAvailable = false;
 
 /**
   * @brief This function handles DMA1 stream5 global interrupt.
@@ -36,36 +30,16 @@ extern "C" void DMA1_Stream5_IRQHandler(void)
 	
 	if(__HAL_DMA_GET_IT_SOURCE(&DMAHandle, DMA_IT_TC) != RESET)   // if the source is TC
 	{
+        BaseType_t xHigherPriorityTaskWoken;
+        xHigherPriorityTaskWoken = pdFALSE;
 		/* Clear the transfer complete flag */
 		regs->IFCR = DMA_FLAG_TCIF1_5 << DMAHandle.StreamIndex;
 
-		/* Get the length of the data */
-		len = DMA_RX_BUFFER_SIZE - DMAHandle.Instance->NDTR;  
-		
-		/* Get number of bytes we can copy to the end of buffer */
-		tocopy = UART_BUFFER_SIZE - Write;      
-		
-		/* Check how many bytes to copy */
-       	if (tocopy > len) {
-            tocopy = len;
-    	}
-		
-		 /* Write received data for UART main buffer for manipulation later */
-        ptr = DMA_RX_Buffer;
-        memcpy(&UART_Buffer[Write], ptr, tocopy);   /* Copy first part */
-				
-		/* Correct values for remaining data */
-        Write += tocopy;
-        len -= tocopy;
-        ptr += tocopy;
-		
-		/* If still data to write for beginning of buffer */
-        if (len) {
-            memcpy(&UART_Buffer[0], ptr, len);      /* Don't care if we override Read pointer now */
-            Write = len;
+        if (serialRXQueue) {
+            char queueBuffer[64];
+            sprintf(queueBuffer, (char*)DMA_RX_Buffer);
+            xQueueSendFromISR(serialRXQueue, (void*)queueBuffer, &xHigherPriorityTaskWoken);
         }
-
-        dmaDataAvailable = true;
 
 		/* Prepare DMA for next transfer */
         /* Important! DMA stream won't start if all flags are not cleared first */
@@ -74,6 +48,7 @@ extern "C" void DMA1_Stream5_IRQHandler(void)
 		DMAHandle.Instance->M0AR = (uint32_t)DMA_RX_Buffer;   /* Set memory address for DMA again */
         DMAHandle.Instance->NDTR = DMA_RX_BUFFER_SIZE;    /* Set number of bytes to receive */
         DMAHandle.Instance->CR |= DMA_SxCR_EN;            /* Start DMA transfer */
+        portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
 	}
 }
 
@@ -139,7 +114,7 @@ PCSerial::PCSerial(int baudRate) {
 
         __HAL_LINKDMA(&UARTHandle,hdmarx,DMAHandle);
 
-        HAL_NVIC_SetPriority(DMA1_Stream5_IRQn, 0, 0);
+        HAL_NVIC_SetPriority(DMA1_Stream5_IRQn, 5, 5);
         HAL_NVIC_EnableIRQ(DMA1_Stream5_IRQn);
         __HAL_UART_ENABLE_IT(&UARTHandle, UART_IT_IDLE);   // enable idle line interrupt
         __HAL_DMA_ENABLE_IT (&DMAHandle, DMA_IT_TC);  // enable DMA Tx cplt interrupt

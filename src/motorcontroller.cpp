@@ -12,15 +12,15 @@ MotorController::MotorController(IMU &imu) : imu(imu) {
     TIM_OC_InitTypeDef sConfigOC;
 
     PWM1Handle.Instance = TIM2;
-    PWM1Handle.Init.Prescaler = 84-1;
+    PWM1Handle.Init.Prescaler = 1000;
     PWM1Handle.Init.CounterMode = TIM_COUNTERMODE_UP;
-    PWM1Handle.Init.Period = 100-1;
+    PWM1Handle.Init.Period = 1700;
     PWM1Handle.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
 
     PWM2Handle.Instance = TIM3;
-    PWM2Handle.Init.Prescaler = 84-1;
+    PWM2Handle.Init.Prescaler = 1000;
     PWM2Handle.Init.CounterMode = TIM_COUNTERMODE_UP;
-    PWM2Handle.Init.Period = 100-1;
+    PWM2Handle.Init.Period = 1700;
     PWM2Handle.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
 
     if (HAL_TIM_Base_Init(&PWM1Handle) != HAL_OK)
@@ -144,17 +144,14 @@ void MotorController::task() {
     const TickType_t xFrequency = 50;
 
     xLastWakeTime = xTaskGetTickCount();
-    uint8_t increment = 0;  // define a variable to increase the duty cycle
     while (1) {
         //float roll,pitch,yaw;
         //imu.getAngles(&pitch, &roll, &yaw);
         
-        PWM1Handle.Instance->CCR1 = increment;   // D13
-        PWM1Handle.Instance->CCR2 = throttle;   // A1
-        PWM2Handle.Instance->CCR1 = increment;   // D5
-        PWM2Handle.Instance->CCR2 = 100-increment;   // D9
-        increment++;  // increment in 10 steps or by 10% for the duty cycle
-        if (increment>100) increment =0;   // if increment is > 100 than reset its value to 0
+        PWM1Handle.Instance->CCR1 = (throttle*0.85)+85;   // D13
+        PWM1Handle.Instance->CCR2 = (throttle*0.85)+85;   // A1
+        PWM2Handle.Instance->CCR1 = (throttle*0.85)+85;   // D5
+        PWM2Handle.Instance->CCR2 = (throttle*0.85)+85;   // D9
         vTaskDelayUntil( &xLastWakeTime, xFrequency );
 	  }
 }
