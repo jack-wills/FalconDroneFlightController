@@ -13,13 +13,13 @@ public:
 	IMU(uint8_t sensorAddress);
     IMU(const IMU& other);
 	~IMU();
+    void getAngles(float *pitch, float *roll, float *yaw);
 private:
     static void startTaskImpl(void* _this);
     void task();
 	void update6Dof();
 	void update9Dof();
 	void update();
-    void getAngles(float *pitch, float *roll, float *yaw);
     void printAngles();
     void printQuaternions();
     void calibrateMagnetometer();

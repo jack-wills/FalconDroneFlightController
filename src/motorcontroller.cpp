@@ -3,7 +3,8 @@
 #define TIM2_PSC_SET 	16
 #define TIM2_ARR_SET 	19999
 
-MotorController::MotorController(IMU &imu) : imu(imu) {
+MotorController::MotorController(IMU &imu) {
+    this->imu = &imu; 
     __HAL_RCC_TIM2_CLK_ENABLE();
     __HAL_RCC_TIM3_CLK_ENABLE();
 
@@ -134,6 +135,42 @@ void MotorController::setThrottle(uint16_t throttle) {
     }
 }
 
+
+void MotorController::calculatePID(float pitch, float roll, float yaw) {
+    //PID Pitch
+    pidPitchError = pitch - pitchInput;
+    pidPitchIntegral += pidPitchError;
+    pidPitchValue = (pidGainPP * pidPitchError) + (pidGainIP * pidPitchIntegral) + (pidGainDP * (pidPitchError - pidPitchOld));
+    pidPitchOld = pidPitchError;
+    //PID Roll
+    pidRollError = roll - rollInput;
+    pidRollIntegral += pidRollError;
+    pidRollValue = (pidGainPR * pidRollError) + (pidGainIR * pidRollIntegral) + (pidGainDR * (pidRollError - pidRollOld));
+    pidRollOld = pidRollError;
+    //PID Yaw
+    pidYawError = yaw - yawInput;
+    pidYawIntegral += pidYawError;
+    //pidYawValue = (pidGainPY * pidYawError) + (pidGainIY * pidYawIntegral) + (pidGainDY * (pidYawError - pidYawOld));
+    pidYawOld = pidYawError;
+}
+
+
+float map(float in, float inMin, float inMax, float outMin, float outMax) {
+    // check it's within the range
+    if (inMin<inMax) { 
+        if (in <= inMin) 
+            return outMin;
+        if (in >= inMax)
+            return outMax;
+    } else { 
+        if (in >= inMin) 
+            return outMin;
+        if (in <= inMax)
+            return outMax;
+    }
+    return outMin + ((in-inMin)/(inMax-inMin))*(outMax-outMin);
+}
+
 void MotorController::startTaskImpl(void* _this) {
     ((MotorController*)_this)->task();
 }
@@ -145,13 +182,19 @@ void MotorController::task() {
 
     xLastWakeTime = xTaskGetTickCount();
     while (1) {
-        //float roll,pitch,yaw;
-        //imu.getAngles(&pitch, &roll, &yaw);
+        float roll,pitch,yaw;
+        imu->getAngles(&pitch, &roll, &yaw);
+        calculatePID(pitch, roll, yaw);
         
-        PWM1Handle.Instance->CCR1 = (throttle*0.85)+85;   // D13
-        PWM1Handle.Instance->CCR2 = (throttle*0.85)+85;   // A1
-        PWM2Handle.Instance->CCR1 = (throttle*0.85)+85;   // D5
-        PWM2Handle.Instance->CCR2 = (throttle*0.85)+85;   // D9
+        float throttleFL = throttle + pidPitchValue - pidRollValue + pidYawValue;
+        float throttleFR = throttle + pidPitchValue + pidRollValue - pidYawValue;
+        float throttleBL = throttle - pidPitchValue - pidRollValue - pidYawValue;
+        float throttleBR = throttle - pidPitchValue + pidRollValue + pidYawValue;
+        
+        PWM1Handle.Instance->CCR1 = map(throttleFR, 0, 120, 85.f, 170.f);   // D13
+        PWM1Handle.Instance->CCR2 = map(throttleFL, 0, 120, 85.f, 170.f);   // A1
+        PWM2Handle.Instance->CCR1 = map(throttleBL, 0, 120, 85.f, 170.f);   // D5
+        PWM2Handle.Instance->CCR2 = map(throttleBR, 0, 120, 85.f, 170.f);   // D9
         vTaskDelayUntil( &xLastWakeTime, xFrequency );
 	  }
 }
