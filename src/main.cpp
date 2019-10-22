@@ -11,6 +11,7 @@
 #include "logmanager.h"
 #include "motorcontroller.h"
 #include "pcserialreciever.h"
+#include "eeprom.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -65,6 +66,9 @@ void mainTask(void* p) {
 
     GPIO_InitTypeDef GPIO_InitStruct; 
 
+    HAL_FLASH_Unlock();
+    EE_Init();
+
     /*GPIO_InitStruct.Pin = GPIO_PIN_5;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP; // digital Input
     GPIO_InitStruct.Pull = GPIO_NOPULL; 
@@ -82,7 +86,7 @@ void mainTask(void* p) {
 
     MotorController motorController = MotorController(imu);
 
-    PCSerialReciever serialReciever = PCSerialReciever(motorController);
+    PCSerialReciever serialReciever = PCSerialReciever(motorController, imu);
 
     vTaskDelete(NULL);
 }

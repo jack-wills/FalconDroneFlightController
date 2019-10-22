@@ -10,11 +10,12 @@
 
 #include "logger.h"
 #include "motorcontroller.h"
+#include "imu.h"
 
 class PCSerialReciever
 {
 public:
-	PCSerialReciever(MotorController& motorController);
+	PCSerialReciever(MotorController& motorController, IMU &imu);
 	~PCSerialReciever();
 	PCSerialReciever(const PCSerialReciever& other);
 private:
@@ -22,6 +23,7 @@ private:
     void task();
 
 	MotorController *motorController;
+    IMU *imu;
 
     Logger LOG = Logger("SerialRX");
 

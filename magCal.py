@@ -69,7 +69,7 @@ print("\n-------Start------\n")
 #open serial port
 ser = serial.Serial()
 ser.baudrate = 115200
-ser.port =  'COM10'
+ser.port =  'COM9'
 ser.timeout = 25
 ser.open()
 sleep(0.5)    
@@ -84,6 +84,9 @@ magY = np.array(magYList)
 magZ = np.array(magZList)
 
 count = 0
+
+string = 'MAGCALINIT true\n'
+ser.write(string.encode())
 
 while(count < 1000):
     if ser.readable():
@@ -100,8 +103,6 @@ while(count < 1000):
             count += 1
 
 print("Data Collected")
-#print(magX)
-#np.savetxt('magnetometer.csv', np.array([magX,magY,magZ]), delimiter=',', fmt='%i')
 
 fig1 = plt.figure(1)
 ax1 = fig1.add_subplot(111, projection='3d')
@@ -132,6 +133,9 @@ print()
 print("b")
 print(b)
 print()
+
+string = 'MAGCALVAL ' + str(b[0][0]) + ' ' + str(b[1][0]) + ' ' + str(b[2][0]) + ' ' + str(Ainv[0][0]) + ' ' + str(Ainv[0][1]) + ' ' + str(Ainv[0][2]) + ' ' + str(Ainv[1][0]) + ' ' + str(Ainv[1][1]) + ' ' + str(Ainv[1][2]) + ' ' + str(Ainv[2][0]) + ' ' + str(Ainv[2][1]) + ' ' + str(Ainv[2][2]) + '\n'
+ser.write(string.encode())
 
 calibratedX = np.zeros(magX.shape)
 calibratedY = np.zeros(magY.shape)

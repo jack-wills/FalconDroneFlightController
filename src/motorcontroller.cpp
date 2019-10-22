@@ -156,7 +156,6 @@ void MotorController::calculatePID(float pitch, float roll, float yaw) {
 
 
 float map(float in, float inMin, float inMax, float outMin, float outMax) {
-    // check it's within the range
     if (inMin<inMax) { 
         if (in <= inMin) 
             return outMin;

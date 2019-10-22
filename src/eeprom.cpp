@@ -41,7 +41,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "eeprom.h"
-#include "logger.h"
+#include <string.h>
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -72,7 +72,6 @@ static uint16_t EE_VerifyPageFullyErased(uint32_t Address);
   */
 uint16_t EE_Init(void)
 {
-  Logger LOG = Logger("EEPROM");
   uint16_t PageStatus0 = 6, PageStatus1 = 6;
   uint16_t VarIdx = 0;
   uint16_t EepromStatus = 0, ReadStatus = 0;
@@ -82,10 +81,8 @@ uint16_t EE_Init(void)
   FLASH_EraseInitTypeDef pEraseInit;
 
 
-      LOG.error() << "test1" << LOG.flush;
   /* Get Page0 status */
   PageStatus0 = (*(__IO uint16_t*)PAGE0_BASE_ADDRESS);
-      LOG.error() << "test2" << LOG.flush;
   /* Get Page1 status */
   PageStatus1 = (*(__IO uint16_t*)PAGE1_BASE_ADDRESS);
 
@@ -93,7 +90,6 @@ uint16_t EE_Init(void)
   pEraseInit.Sector = PAGE0_ID;
   pEraseInit.NbSectors = 1;
   pEraseInit.VoltageRange = VOLTAGE_RANGE;
-      LOG.error() << PageStatus0 << LOG.flush;
   
   /* Check for invalid header states and repair if necessary */
   switch (PageStatus0)
@@ -442,6 +438,26 @@ uint16_t EE_WriteVariable(uint16_t VirtAddress, uint16_t Data)
   return Status;
 }
 
+uint16_t EE_WriteFloat(uint16_t VirtAddress, float Data) {
+  uint32_t bytes;
+  uint16_t Status = 0;
+  memcpy(&bytes, &Data, 4);
+  Status = EE_WriteVariable(VirtAddress, bytes >> 16);
+  Status = EE_WriteVariable(VirtAddress+1, bytes & 0x0000FFFF);
+  return Status;
+}
+
+uint16_t EE_ReadFloat(uint16_t VirtAddress, float* Data) {
+  uint32_t bytes;
+  uint16_t Status = 0;
+  uint16_t word1, word2;
+  Status = EE_ReadVariable(VirtAddress, &word1);
+  Status = EE_ReadVariable(VirtAddress+1, &word2);
+  bytes = (word1 << 16) +  word2;
+  memcpy(Data, &bytes, 4);
+  return Status;
+}
+
 /**
   * @brief  Erases PAGE and PAGE1 and writes VALID_PAGE header to PAGE
   * @param  None
@@ -450,7 +466,6 @@ uint16_t EE_WriteVariable(uint16_t VirtAddress, uint16_t Data)
   */
 static HAL_StatusTypeDef EE_Format(void)
 {
-  Logger LOG = Logger("EEPROM");
   HAL_StatusTypeDef FlashStatus = HAL_OK;
   uint32_t SectorError = 0;
   FLASH_EraseInitTypeDef pEraseInit;
@@ -474,7 +489,6 @@ static HAL_StatusTypeDef EE_Format(void)
   /* If program operation was failed, a Flash error code is returned */
   if (FlashStatus != HAL_OK)
   {
-      LOG.error() << HAL_FLASH_GetError() << LOG.flush;
     return FlashStatus;
   }
 

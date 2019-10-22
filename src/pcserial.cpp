@@ -11,7 +11,7 @@ SemaphoreHandle_t uartMutex = 0;
 UART_HandleTypeDef UARTHandle;
 DMA_HandleTypeDef DMAHandle;
 
-#define DMA_RX_BUFFER_SIZE          64
+#define DMA_RX_BUFFER_SIZE          256
 uint8_t DMA_RX_Buffer[DMA_RX_BUFFER_SIZE];
 
 /**
@@ -36,7 +36,7 @@ extern "C" void DMA1_Stream5_IRQHandler(void)
 		regs->IFCR = DMA_FLAG_TCIF1_5 << DMAHandle.StreamIndex;
 
         if (serialRXQueue) {
-            char queueBuffer[64];
+            char queueBuffer[DMA_RX_BUFFER_SIZE];
             sprintf(queueBuffer, (char*)DMA_RX_Buffer);
             xQueueSendFromISR(serialRXQueue, (void*)queueBuffer, &xHigherPriorityTaskWoken);
         }

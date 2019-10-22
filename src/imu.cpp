@@ -1,6 +1,23 @@
 #include "imu.h"
 
 #include "fccomm.h"
+#include "eeprom.h"
+
+#define GYROCAL_ADDRX 0x1000
+#define GYROCAL_ADDRY 0x1001
+#define GYROCAL_ADDRZ 0x1002
+#define MAGCALBIAS_ADDRX 0x1004
+#define MAGCALBIAS_ADDRY 0x1006
+#define MAGCALBIAS_ADDRZ 0x1008
+#define MAGCAL_ADDR00 0x100A
+#define MAGCAL_ADDR01 0x100C
+#define MAGCAL_ADDR02 0x100E
+#define MAGCAL_ADDR10 0x1010
+#define MAGCAL_ADDR11 0x1012
+#define MAGCAL_ADDR12 0x1014
+#define MAGCAL_ADDR20 0x1016
+#define MAGCAL_ADDR21 0x1018
+#define MAGCAL_ADDR22 0x101A
 
 IMU::IMU(uint8_t sensorAddress): i2cDevice(I2CDevice()), mpu(MPU9250(sensorAddress, i2cDevice)) {
     mpu.initialize();
@@ -20,7 +37,29 @@ IMU::IMU(uint8_t sensorAddress): i2cDevice(I2CDevice()), mpu(MPU9250(sensorAddre
     	mRes = 10.*4912./8190.; // Proper scale to return milliGauss 14bit
 	}
 
-    calibrateGyro();
+	uint16_t gXOffsetUnsigned, gYOffsetUnsigned, gZOffsetUnsigned;
+
+	EE_ReadVariable(GYROCAL_ADDRX, &gXOffsetUnsigned);
+	EE_ReadVariable(GYROCAL_ADDRY, &gYOffsetUnsigned);
+	EE_ReadVariable(GYROCAL_ADDRZ, &gZOffsetUnsigned);
+
+	memcpy(&gXOffset, &gXOffsetUnsigned, 2);
+	memcpy(&gYOffset, &gYOffsetUnsigned, 2);
+	memcpy(&gZOffset, &gZOffsetUnsigned, 2);
+
+	EE_ReadFloat(MAGCALBIAS_ADDRX, &magBias[0]);
+	EE_ReadFloat(MAGCALBIAS_ADDRY, &magBias[1]);
+	EE_ReadFloat(MAGCALBIAS_ADDRZ, &magBias[2]);
+
+	EE_ReadFloat(MAGCAL_ADDR00, &magCalibration[0][0]);
+	EE_ReadFloat(MAGCAL_ADDR01, &magCalibration[0][1]);
+	EE_ReadFloat(MAGCAL_ADDR02, &magCalibration[0][2]);
+	EE_ReadFloat(MAGCAL_ADDR10, &magCalibration[1][0]);
+	EE_ReadFloat(MAGCAL_ADDR11, &magCalibration[1][1]);
+	EE_ReadFloat(MAGCAL_ADDR12, &magCalibration[1][2]);
+	EE_ReadFloat(MAGCAL_ADDR20, &magCalibration[2][0]);
+	EE_ReadFloat(MAGCAL_ADDR21, &magCalibration[2][1]);
+	EE_ReadFloat(MAGCAL_ADDR22, &magCalibration[2][2]);
 
 	beta = 5.0f;
     uint64_t tLast = HAL_GetTick();
@@ -47,46 +86,82 @@ void IMU::startTaskImpl(void* _this){
 }
 
 void IMU::task() {
-
-    if (false) {
-        vTaskDelay(100);
-        calibrateMagnetometer();
-        vTaskDelay(100000000);
-    }
-
  	TickType_t xLastWakeTime;
  	const TickType_t xFrequency = samplePeriod;
 
 	xLastWakeTime = xTaskGetTickCount();
 	while (1) {
         update();
-        //printAngles();
+        printAngles();
         vTaskDelayUntil( &xLastWakeTime, xFrequency );
 	}
 }
 
 void IMU::calibrateMagnetometer() {
+	vTaskSuspend(taskHandle);
 	for (int i = 0; i < 1000; i++) {
 		mpu.getMagnetometerReading(&mXRaw, &mYRaw, &mZRaw);
 		FCComm("MAGCAL") << (float)mXRaw*mRes << " " << (float)mYRaw*mRes << " " << (float)mZRaw*mRes;
 		if(mMode == AK8963_SAMP_8)   vTaskDelay(125);  // at 8 Hz ODR, new mag data is available every 125 ms
 		if(mMode == AK8963_SAMP_100) vTaskDelay(10);   // at 100 Hz ODR, new mag data is available every 10 ms   
 	}
+	vTaskResume(taskHandle);
+}
+
+void IMU::setMagnetometerCalibration(float magB0, float magB1, float magB2, float magC00, float magC01, float magC02, float magC10, float magC11, float magC12,  float magC20, float magC21, float magC22) {
+    magBias[0] = magB0;
+    magBias[1] = magB1;
+    magBias[2] = magB2;
+	magCalibration[0][0] = magC00;
+	magCalibration[0][1] = magC01;
+	magCalibration[0][2] = magC02;
+	magCalibration[1][0] = magC10;
+	magCalibration[1][1] = magC11;
+	magCalibration[1][2] = magC12;
+	magCalibration[2][0] = magC20;
+	magCalibration[2][1] = magC21;
+	magCalibration[2][2] = magC22;
+
+	EE_WriteFloat(MAGCALBIAS_ADDRX, magBias[0]);
+	EE_WriteFloat(MAGCALBIAS_ADDRY, magBias[1]);
+	EE_WriteFloat(MAGCALBIAS_ADDRZ, magBias[2]);
+
+	EE_WriteFloat(MAGCAL_ADDR00, magCalibration[0][0]);
+	EE_WriteFloat(MAGCAL_ADDR01, magCalibration[0][1]);
+	EE_WriteFloat(MAGCAL_ADDR02, magCalibration[0][2]);
+	EE_WriteFloat(MAGCAL_ADDR10, magCalibration[1][0]);
+	EE_WriteFloat(MAGCAL_ADDR11, magCalibration[1][1]);
+	EE_WriteFloat(MAGCAL_ADDR12, magCalibration[1][2]);
+	EE_WriteFloat(MAGCAL_ADDR20, magCalibration[2][0]);
+	EE_WriteFloat(MAGCAL_ADDR21, magCalibration[2][1]);
+	EE_WriteFloat(MAGCAL_ADDR22, magCalibration[2][2]);
 }
 
 void IMU::calibrateGyro() {
+	vTaskSuspend(taskHandle);
     LOG.info() << "Starting calibrations..." << LOG.flush;
+	int32_t gXOffsetSum = 0, gYOffsetSum = 0, gZOffsetSum = 0;
     for(int i = 0; i < 500; i++){
         mpu.getRotation(&gXRaw,&gYRaw,&gZRaw);
-        gXOffset += gXRaw;
-        gYOffset += gYRaw;
-        gZOffset += gZRaw;
+        gXOffsetSum += gXRaw;
+        gYOffsetSum += gYRaw;
+        gZOffsetSum += gZRaw;
         vTaskDelay(3);
     }
     LOG.info() << "Calibrations Finished" << LOG.flush;
-    gXOffset /= 500;
-    gYOffset /= 500;
-    gZOffset /= 500;
+    gXOffset = gXOffsetSum / 500;
+    gYOffset = gYOffsetSum / 500;
+    gZOffset = gZOffsetSum / 500;
+	uint16_t gXOffsetUnsigned, gYOffsetUnsigned, gZOffsetUnsigned;
+
+	memcpy(&gXOffsetUnsigned, &gXOffset, 2);
+	memcpy(&gYOffsetUnsigned, &gYOffset, 2);
+	memcpy(&gZOffsetUnsigned, &gZOffset, 2);
+	LOG.info() << gXOffset << " " << gXOffsetUnsigned << LOG.flush;
+	EE_WriteVariable(GYROCAL_ADDRX, gXOffsetUnsigned);
+	EE_WriteVariable(GYROCAL_ADDRY, gYOffsetUnsigned);
+	EE_WriteVariable(GYROCAL_ADDRZ, gZOffsetUnsigned);
+	vTaskResume(taskHandle);
 }
 
 void IMU::loadValues() {

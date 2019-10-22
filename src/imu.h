@@ -14,6 +14,9 @@ public:
     IMU(const IMU& other);
 	~IMU();
     void getAngles(float *pitch, float *roll, float *yaw);
+    void setMagnetometerCalibration(float magB0, float magB1, float magB2, float magC00, float magC01, float magC02, float magC10, float magC11, float magC12,  float magC20, float magC21, float magC22);
+    void calibrateMagnetometer();
+    void calibrateGyro();
 private:
     static void startTaskImpl(void* _this);
     void task();
@@ -22,8 +25,6 @@ private:
 	void update();
     void printAngles();
     void printQuaternions();
-    void calibrateMagnetometer();
-    void calibrateGyro();
     void loadValues();
     float invSqrt(float x);
     void mahonyInit();
@@ -40,7 +41,7 @@ private:
 
     int16_t aXRaw,aYRaw,aZRaw,gXRaw,gYRaw,gZRaw,mXRaw,mYRaw,mZRaw;
 
-    int64_t gXOffset = 0, gYOffset = 0, gZOffset = 0;
+    int16_t gXOffset = 0, gYOffset = 0, gZOffset = 0;
     float aXOffset = 0.82f, aYOffset = 0.05f, aZOffset = -0.21;
 
     float aX,aY,aZ,gX,gY,gZ,mX,mY,mZ;
